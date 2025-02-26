@@ -78,6 +78,9 @@ def viz_pointcloud(model=model, isolate_pepper=True):
     clipping_distance_in_meters = 1 #1 meter
     clipping_distance = clipping_distance_in_meters / depth_scale
     pointcloud = o3d.geometry.PointCloud()
+    mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+                    size=0.1, origin=[0, 0, 0]
+                )
 
     try:
 
@@ -100,6 +103,8 @@ def viz_pointcloud(model=model, isolate_pepper=True):
                 # Convert color to RGB (Open3D uses RGB format)
                 color_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2RGB)
 
+                depth_image_mask = None
+
                 if isolate_pepper:
                     results = model.predict(color_image[:, 104:744, :], conf=0.8)
                     result = results[0]
@@ -108,8 +113,8 @@ def viz_pointcloud(model=model, isolate_pepper=True):
                     if not masks is None:
                         mask_img = masks.data[0].cpu().numpy().astype('uint8') * 255
                         
-                        depth_image = np.where((mask_img >128), depth_image[:,104:744], mask_img)
-                        depth_image = np.pad(depth_image, ((0, 0), (104, 104)), mode='constant', constant_values=0)
+                        depth_image_mask = np.where((mask_img >128), depth_image[:,104:744], mask_img)
+                        depth_image_mask = np.pad(depth_image_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
 
                 intrinsics = o3d.camera.PinholeCameraIntrinsic(
                     width=depth_intrinsics.width,
@@ -121,6 +126,8 @@ def viz_pointcloud(model=model, isolate_pepper=True):
                 )
 
                 # Create RGBD image
+                print("color image shape: ", color_image.shape)
+                print("depth image shape: ", depth_image.shape)
                 color_o3d = o3d.geometry.Image(color_image)
                 depth_o3d = o3d.geometry.Image(depth_image)
                 rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
@@ -138,17 +145,57 @@ def viz_pointcloud(model=model, isolate_pepper=True):
 
                 # Transform to better viewing orientation
                 pcd.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
+                if not depth_image_mask is None:
+                    print("color image shape: ", color_image.shape)
+                    print("depth image mask shape: ", depth_image_mask.shape)
+                    color_o3d = o3d.geometry.Image(color_image)
+                    depth_o3d_mask = o3d.geometry.Image(depth_image_mask)
+                    rgbd_image_mask = o3d.geometry.RGBDImage.create_from_color_and_depth(
+                        color_o3d, depth_o3d_mask,
+                        depth_scale=1.0/depth_scale,
+                        depth_trunc=clipping_distance_in_meters,
+                        convert_rgb_to_intensity=False
+                    )
+
+                    # Generate point cloud
+                    pcd_mask = o3d.geometry.PointCloud.create_from_rgbd_image(
+                        rgbd_image_mask,
+                        intrinsics
+                    )
+
+                    # Transform to better viewing orientation
+                    pcd_mask.transform([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+
+                    # Calculate mean x, y, z coordinates
+                    pts = np.asarray(pcd_mask.points)
+                    mean_x, mean_y, mean_z = pts.mean(axis=0)
+                    mesh_frame.translate([mean_x, mean_y, mean_z], relative=False)
+                # print(f"Mean X: {mean_x}, Mean Y: {mean_y}, Mean Z: {mean_z}")
+                # Add mean point to the point cloud
+                # mean_point = o3d.geometry.TriangleMesh.create_sphere(radius=0.02)
+                # mean_point.paint_uniform_color([1, 0, 0])  # Red color
+                # mean_point.translate([mean_x, mean_y, mean_z])
+                
+                # vis.update_geometry(mesh_frame)
                 pointcloud.points = pcd.points
                 pointcloud.colors = pcd.colors
+
+                
+                
                 if not masks is None and isolate_pepper:
-                    vis.update_geometry(pointcloud)
-                # vis.update_geometry(pointcloud)
+                    # vis.update_geometry(pointcloud)
+                    vis.update_geometry(mesh_frame)
+                    # o3d.visualization.draw_geometries([pointcloud, mesh_frame])
+                    # vis.add_geometry(mesh_frame)
+                vis.update_geometry(pointcloud)
                 return False
             
             vis = o3d.visualization.Visualizer()
             vis.create_window()
             vis.register_animation_callback(update_points)
             vis.add_geometry(pointcloud)
+            vis.add_geometry(mesh_frame)
             vis.run()
             vis.destroy_window()
 
