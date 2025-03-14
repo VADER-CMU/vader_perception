@@ -1,0 +1,2 @@
+model_weights: "/home/kshitij/Documents/Bell Pepper/yolov8-obb/yolov8l-seg-300.pt"
+confidence: 0.8
