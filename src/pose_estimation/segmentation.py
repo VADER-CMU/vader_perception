@@ -18,6 +18,7 @@ class Segmentation:
 
     def infer(self, rgb_image):
         """
+        Runs the inference on a single image
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
               conf (float): confidence threshold
         Returns: results (list): List of results containing bounding box coordinates, class labels, and confidence
@@ -29,8 +30,9 @@ class Segmentation:
     
     def infer_video(self, input_video_path, output_video_path):
         """
-        Args: input_video_path (str): Path to input video
-              output_video_path (str): Path to save annotated video
+        Runs the inference on a video and saves the annotated video
+        Args: input_video_path (str): Path to input video image size: (848, 480, 3)
+              output_video_path (str): Path to save annotated video, output image size: (640, 480, 3)
         """
         cap = cv2.VideoCapture(input_video_path)
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
