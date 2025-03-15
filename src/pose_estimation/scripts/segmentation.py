@@ -4,19 +4,17 @@ from ultralytics import YOLO
 import yaml
 
 class Segmentation:
-    def __init__(self, model_cfg, device='cuda'):
+    def __init__(self, weights_path, device='cuda'):
         """
         A class to perform instance segmentation using YOLO series of models
         Args: model_cfg (str): Path to model configuration file
               device (str): Device to run inference on (default: 'cuda')
         """
         self.device = device
-        with open(model_cfg, 'r') as file:
-            self.config = yaml.safe_load(file)
-        self.model = YOLO(self.config['model_weights'])
+        self.model = YOLO(weights_path)
         self.model.to(self.device)
 
-    def infer(self, rgb_image):
+    def infer(self, rgb_image, confidence=0.8):
         """
         Runs the inference on a single image
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -24,7 +22,7 @@ class Segmentation:
         Returns: results (list): List of results containing bounding box coordinates, class labels, and confidence
         """
         # Load image
-        results = self.model.predict(rgb_image, conf=self.config['confidence'])
+        results = self.model.predict(rgb_image, conf=confidence)
         
         return results
     
