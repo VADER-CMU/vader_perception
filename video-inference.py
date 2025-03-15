@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-model = YOLO("/home/kshitij/Documents/Bell Pepper/yolov8-obb/yolov8l-seg-300.pt")
+model = YOLO("/home/kshitij/Documents/Bell Pepper/pose_estimation/best.pt")
 
 
 def process_video(input_video_path, output_video_path):
@@ -72,4 +72,4 @@ def process_video(input_video_path, output_video_path):
     cap.release()
     out.release()
 
-process_video('/home/kshitij/Documents/Bell Pepper/yolov8-obb/rgb_data_sample.mp4', 'inference_video_2.mp4')
+process_video('/home/kshitij/Documents/Bell Pepper/yolov8-obb/rgb_data_sample.mp4', 'inference_video_yolov8l.mp4')

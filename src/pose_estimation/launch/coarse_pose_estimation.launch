@@ -1,0 +1,20 @@
+<launch>
+  <!-- Launch the RealSense camera -->
+  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+    <!-- RealSense camera configuration parameters -->
+    <arg name="enable_pointcloud" value="true" />
+    <arg name="align_depth" value="true" />
+    <arg name="color_width" value="640" />
+    <arg name="color_height" value="480" />
+    <arg name="color_fps" value="30" />
+    <arg name="depth_width" value="640" />
+    <arg name="depth_height" value="480" />
+    <arg name="depth_fps" value="30" />
+  </include>
+
+  <!-- Start the fruit detection node -->
+  <node name="fruit_coarse_pose" pkg="fruit_detection" type="fruit_coarse_pose.py" output="screen">
+    <!-- You can add parameters here if needed -->
+    <!-- <param name="detection_threshold" value="0.75" /> -->
+  </node>
+</launch>
