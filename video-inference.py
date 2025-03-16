@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-model = YOLO("/home/kshitij/Documents/Bell Pepper/pose_estimation/best.pt")
+model = YOLO("/home/vader/VADER/perception/pose_estimation/src/pose_estimation/weights/yolov8l-seg-300.pt")
 
 
 def process_video(input_video_path, output_video_path):
@@ -19,6 +19,7 @@ def process_video(input_video_path, output_video_path):
             break
 
         resized_frame = frame[:, 104:744, :]
+        print(resized_frame.shape)
         
         # YOLO instance segmentation prediction
         results = model.predict(resized_frame, conf=0.6)
@@ -72,4 +73,4 @@ def process_video(input_video_path, output_video_path):
     cap.release()
     out.release()
 
-process_video('/home/kshitij/Documents/Bell Pepper/yolov8-obb/rgb_data_sample.mp4', 'inference_video_yolov8l.mp4')
+process_video('/home/vader/VADER/perception/pose_estimation/rgb_data_sample.mp4', 'inference_video_yolov8l.mp4')

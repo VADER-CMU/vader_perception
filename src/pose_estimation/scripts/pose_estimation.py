@@ -38,16 +38,29 @@ class PoseEstimation:
                  quaternion (np.ndarray): Orientation of the fruit in the camera frame
         """
 
-        mask_pcd = self.unproject(full_point_cloud, mask)
-        pts = np.asarray(mask_pcd.points)
-        mean_x, mean_y, mean_z = pts.mean(axis=0)
+
+        segmentation_mask = np.pad(mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
+        print("segmentation mask shape: ", segmentation_mask.shape)
+
+        mask_pcd = self.unproject(full_point_cloud, segmentation_mask)
+        mask_pcd.transform([
+            [0, 0, 1, 0], 
+            [0, 1, 0, 0], 
+            [-1, 0, 0, 0], 
+            [0, 0, 0, 1]
+            ])
+        mask_pcd = np.array(mask_pcd.points)
+        
+        print("mask pcd shape: ", mask_pcd.shape)
+        
+        mean_x, mean_y, mean_z = mask_pcd.mean(axis=0)
 
 
 
         position = np.array([mean_x, mean_y, mean_z])
 
         quaternion = np.array([1.0, 0.0, 0.0, 0.0])
-        return position, quaternion
+        return mask_pcd
     
 
     def fine_fruit_pose_estimation(self, rgb_image, depth_image, mask):
@@ -74,14 +87,15 @@ class PoseEstimation:
         colors = []
         new_points = []
         for i,point in enumerate(points):
-            x,y,z = point
-            u = mask.shape[1] - 1 - int((x * self.intrinsics[0, 0] / z) + self.intrinsics[0, 2])
-            v = int((y * self.intrinsics[1, 1] / z) + self.intrinsics[1, 2])   
-            if 0 <= u < mask.shape[1] and 0 <= v < mask.shape[0]:
-                if mask[v,u]:
-                    # colors[i] = [1,0,0]
-                    new_points.append(point)
-                    colors.append(points[i])
+            y,x ,z = point
+            if not z == 0:
+                u = mask.shape[1] - 1 - int((x * self.intrinsics[0, 0] / z) + self.intrinsics[0, 2])
+                v = int((y * self.intrinsics[1, 1] / z) + self.intrinsics[1, 2])   
+                if 0 <= u < mask.shape[1] and 0 <= v < mask.shape[0]:
+                    if mask[v,u]>128:
+                        # colors[i] = [1,0,0]
+                        new_points.append(point)
+                        colors.append(points[i])
 
         mask_pcd = o3d.geometry.PointCloud()
         mask_pcd.points = o3d.utility.Vector3dVector(new_points)

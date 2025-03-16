@@ -13,14 +13,13 @@ import matplotlib.pyplot as plt
 class FruitDetectionNode:
     def __init__(self):
 
-        rospy.init_node('fruit_coarse_pose', anonymous=True)
+        rospy.init_node('fruit_pcd', anonymous=True)
 
         self.latest_pointcloud = None
         self.latest_image = None
-        self.position = np.array([0.0, 0.0, 0.0])
-        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+        self.fruit_pcd = None
         
-        self.pose_publisher = rospy.Publisher('fruit_pose', PoseStamped, queue_size=10)
+        self.pcd_publisher = rospy.Publisher('fruit_pcd', PointCloud2, queue_size=10)
 
         rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.pointcloud_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
@@ -59,12 +58,13 @@ class FruitDetectionNode:
         while not rospy.is_shutdown():
             # Check if we have received both messages
             if self.latest_pointcloud is not None and self.latest_image is not None:
-                # Create a PoseStamped message
-                pose_msg = PoseStamped()
+                # # Create a PoseStamped message
+                # pose_msg = PoseStamped()
                 
-                # Set header information
-                pose_msg.header.stamp = rospy.Time.now()
-                pose_msg.header.frame_id = "camera_link"  # Use appropriate frame ID
+                # # Set header information
+                # pose_msg.header.stamp = rospy.Time.now()
+                # pose_msg.header.frame_id = "camera_link"  # Use appropriate frame ID
+                self.fruit_pcd = self.latest_pointcloud
                 
                 print("Latest Image shape: ", self.latest_image.shape)
                 results = Seg.infer(self.latest_image[:, 104:744, :], confidence=0.8)
@@ -78,25 +78,23 @@ class FruitDetectionNode:
                     # cv2.waitKey(1)
                     print("Latest Pointcloud shape: ", self.latest_pointcloud.shape)
                     if(len(self.latest_pointcloud) == 407040):
-                        self.position, self.quaternion = PoseEst.coarse_fruit_pose_estimation(
+                        self.fruit_pcd = PoseEst.coarse_fruit_pose_estimation(
                                                     self.latest_pointcloud, 
                                                     mask
                                                 )
+                        print("fruit_pcd shape: ", self.fruit_pcd.shape)
                 
     
-                pose_msg.pose.position.x = self.position[0]
-                pose_msg.pose.position.y = self.position[1]
-                pose_msg.pose.position.z = self.position[2]
+                # Convert fruit_pcd to PointCloud2 message
+                header = rospy.Header()
+                header.stamp = rospy.Time.now()
+                header.frame_id = "camera_link"
                 
-                # Set orientation (identity quaternion in this example)
-                pose_msg.pose.orientation.x = 0.0
-                pose_msg.pose.orientation.y = 0.0
-                pose_msg.pose.orientation.z = 0.0
-                pose_msg.pose.orientation.w = 1.0
+                fruit_pcd_msg = pc2.create_cloud_xyz32(header, self.fruit_pcd)
                 
-                # Publish the pose
-                self.pose_publisher.publish(pose_msg)
-                rospy.loginfo("Published fruit pose")
+                # Publish the PointCloud2 message
+                self.pcd_publisher.publish(fruit_pcd_msg)
+                rospy.loginfo("Published fruit pcd")
             
             self.rate.sleep()
 
