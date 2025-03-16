@@ -9,7 +9,7 @@ from ultralytics import YOLO
 from PIL import Image, ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
-model = YOLO("/home/kshitij/Documents/Bell Pepper/yolov8-obb/runs/segment/train7/weights/best.pt")
+model = YOLO("/home/vader/VADER/perception/pose_estimation/src/pose_estimation/weights/yolov8l-seg-300.pt")
 
 def viz_depth_map():
     # Configure RealSense pipeline
@@ -24,6 +24,7 @@ def viz_depth_map():
     # Getting the depth sensor's depth scale (see rs-align example for explanation)
     depth_sensor = profile.get_device().first_depth_sensor()
     depth_scale = depth_sensor.get_depth_scale()
+    print("Depth Scale is: " , depth_scale)
     clipping_distance_in_meters = 1 #1 meter
     clipping_distance = clipping_distance_in_meters / depth_scale
 
@@ -75,6 +76,7 @@ def viz_pointcloud(model=model, isolate_pepper=True):
     # Getting the depth sensor's depth scale (see rs-align example for explanation)
     depth_sensor = profile.get_device().first_depth_sensor()
     depth_scale = depth_sensor.get_depth_scale()
+    print("Depth Scale is: " , depth_scale)
     clipping_distance_in_meters = 1 #1 meter
     clipping_distance = clipping_distance_in_meters / depth_scale
     pointcloud = o3d.geometry.PointCloud()
