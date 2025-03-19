@@ -73,7 +73,7 @@ class FruitDetectionNode:
                     mask = masks.data[0].cpu().numpy().astype('uint8') * 255
                     print("masks: ", mask.shape)
                     mask_pcd = PoseEst.coarse_fruit_pose_estimation(self.latest_depth, mask)
-                    mask_pcd = np.array(mask_pcd.points)
+                    # mask_pcd = np.array(mask_pcd)
                     self.fruit_pcd = mask_pcd
 
                 
@@ -81,7 +81,7 @@ class FruitDetectionNode:
                 # Convert fruit_pcd to PointCloud2 message
                 header = rospy.Header()
                 header.stamp = rospy.Time.now()
-                header.frame_id = "camera_color_optical_frame" 
+                header.frame_id = "camera_depth_optical_frame" 
                 
                 fruit_pcd_msg = pc2.create_cloud_xyz32(header, self.fruit_pcd)
                 
