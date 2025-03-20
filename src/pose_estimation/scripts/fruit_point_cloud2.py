@@ -64,13 +64,23 @@ class FruitDetectionNode:
         while not rospy.is_shutdown():
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
-                
-                print("Latest Image shape: ", self.latest_image.shape)
+                # Convert fruit_pcd to PointCloud2 message
+                header = rospy.Header()
+                header.stamp = rospy.Time.now()
+                cv2.imwrite(f'/home/vader/VADER/perception/pose_estimation/raw_data/rgb_{header.stamp}.png', self.latest_image)
+                # cv2.imwrite(f'/home/vader/VADER/perception/pose_estimation/raw_data2/depth_{header.stamp}.png', self.latest_depth)
+                depth_array = np.array(self.latest_depth, dtype=np.float32)
+                np.save(f'/home/vader/VADER/perception/pose_estimation/raw_data/depth_{header.stamp}.npy', depth_array)
+                print("Latest Depth shape: ", depth_array.shape)
+                # print("Latest Image shape: ", self.latest_image.shape)
                 results = Seg.infer(self.latest_image[:, 104:744, :], confidence=0.8)
                 result = results[0]
                 masks = result.masks
                 if not masks is None:
                     mask = masks.data[0].cpu().numpy().astype('uint8') * 255
+                    segmentation_mask = np.pad(mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
+                    # print("segmentation mask shape: ", segmentation_mask.shape)
+                    cv2.imwrite(f'/home/vader/VADER/perception/pose_estimation/raw_data/mask_{header.stamp}.png', segmentation_mask)
                     print("masks: ", mask.shape)
                     mask_pcd = PoseEst.coarse_fruit_pose_estimation(self.latest_depth, mask)
                     # mask_pcd = np.array(mask_pcd)
@@ -78,9 +88,6 @@ class FruitDetectionNode:
 
                 
     
-                # Convert fruit_pcd to PointCloud2 message
-                header = rospy.Header()
-                header.stamp = rospy.Time.now()
                 header.frame_id = "camera_depth_optical_frame" 
                 
                 fruit_pcd_msg = pc2.create_cloud_xyz32(header, self.fruit_pcd)

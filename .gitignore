@@ -2,3 +2,5 @@ build/
 devel/
 install/
 rosbags/
+raw_data/
+raw_data2/
