@@ -36,24 +36,7 @@ class PoseEstimation:
         self.cy = 244.68508911132812
         self.depth_scale = 0.001
 
-        self.intrinsics = np.array([
-            [self.fx, 0,  self.cx],
-            [0,  self.fy, self.cy],
-            [0,  0,  1]
-        ])
-
-        self.depth_intrinsics = rs.pyrealsense2.intrinsics()
-        self.depth_intrinsics.height = 480
-        self.depth_intrinsics.width = 848
-        self.depth_intrinsics.ppx = self.fx
-        self.depth_intrinsics.ppy = self.fy
-        self.depth_intrinsics.fx = self.cx
-        self.depth_intrinsics.fy = self.cy
-        self.depth_intrinsics.model = rs.pyrealsense2.distortion.inverse_brown_conrady
-        self.depth_intrinsics.coeffs = [0.0, 0.0, 0.0, 0.0, 0.0]
-        self.depth_scale = 0.001
-
-    def coarse_fruit_pose_estimation(self, depth_image, mask):
+    def coarse_fruit_pose_estimation(self, rgb, depth, mask):
         """
         Coarse fruit pose estimation gives the position and orientation of the fruit in the camera frame
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -62,35 +45,10 @@ class PoseEstimation:
         Returns: position (np.ndarray): Position of the fruit in the camera frame
                  quaternion (np.ndarray): Orientation of the fruit in the camera frame
         """
-
-
-        segmentation_mask = np.pad(mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
-        print("segmentation mask shape: ", segmentation_mask.shape)
-
-        points = []
-        for v in range(segmentation_mask.shape[0]):
-            for u in range(segmentation_mask.shape[1]):
-                if segmentation_mask[v, u] > 128:
-                    depth_in_meters, point = self.get_depth_at_point(depth_image, u, v)
-                    x,y,z = point
-                    y+=0.2
-                    if depth_in_meters > 0:
-                        points.append([x, y, z])
-        
-        # mask_pcd = self.unproject(points, segmentation_mask)
-        mask_pcd = o3d.geometry.PointCloud()
-        mask_pcd.points = o3d.utility.Vector3dVector(points)
-        # mask_pcd.transform([[1, 0, 0, 0], 
-        #                     [0, 1, 0, 0.2], 
-        #                     [0, 0, 1, 0], 
-        #                     [0, 0, 0, 1]])
-        
-        pts = np.asarray(mask_pcd.points)
-        
-        
-
-        # Get the indices of the pixels in the mask
-        return pts
+        pose = np.eye(4)
+        pcd = self.rgbd_to_pcd(rgb, depth, mask, pose)
+        center = pcd.get_center()
+        return center
     
 
     def fine_fruit_pose_estimation(self, rgb_image, depth_image, mask):
@@ -110,38 +68,40 @@ class PoseEstimation:
         # A quaternion is represented as [w, x, y, z]
         quaternion = np.array([1.0, 0.0, 0.0, 0.0])
         return position, quaternion
-    
-    def unproject(self, points, mask):
 
-        mask = np.fliplr(mask)
-        colors = []
-        new_points = []
-        for i,point in enumerate(points):
-            y,x ,z = point
-            if not z == 0:
-                u = mask.shape[1] - 1 - int((x * self.intrinsics[0, 0] / z) + self.intrinsics[0, 2])
-                v = int((y * self.intrinsics[1, 1] / z) + self.intrinsics[1, 2])   
-                if 0 <= u < mask.shape[1] and 0 <= v < mask.shape[0]:
-                    if mask[v,u]>128:
-                        # colors[i] = [1,0,0]
-                        new_points.append(point)
-                        colors.append(points[i])
+    def rgbd_to_pcd(self, rgb, depth, mask, pose=np.eye(4)):
+        """
+        Converts RGBD and Mask data to a masked point cloud.
+        Args:
+            rgb (numpy.ndarray): The RGB image.
+            depth (numpy.ndarray): The depth image.
+            mask (numpy.ndarray): The mask to apply to the depth image.
+            pose (numpy.ndarray, optional): The pose transformation matrix world frame to camera frame. Defaults to an identity matrix.
+        Returns:
+            open3d.geometry.PointCloud: The resulting masked point cloud.
+        """
 
-        mask_pcd = o3d.geometry.PointCloud()
-        mask_pcd.points = o3d.utility.Vector3dVector(new_points)
-        mask_pcd.colors = o3d.utility.Vector3dVector(colors)
-        return mask_pcd
-    
-    def get_depth_at_point(self, depth_image, x, y):
-        
-        depth_value = depth_image[y, x]
+        masked_depth = mask*depth
 
-        # Calculate real-world coordinates
-        depth_in_meters = depth_value * self.depth_scale
-        pixel = [float(x), float(y)]  # Convert pixel coordinates to floats
-        point = rs.rs2_deproject_pixel_to_point(self.depth_intrinsics, pixel, depth_in_meters)
+        rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(o3d.geometry.Image(rgb),
+                                                                  o3d.geometry.Image(masked_depth),
+                                                                  depth_scale = 1/self.depth_scale,
+                                                                  depth_trunc=1.0/self.depth_scale,
+                                                                  convert_rgb_to_intensity=False)
 
-        return depth_in_meters, point
+        intrinsic = o3d.camera.PinholeCameraIntrinsic()
+        intrinsic.set_intrinsics(height=rgb.shape[0],
+                                 width=rgb.shape[1],
+                                 fx=self.fx,
+                                 fy=self.fy,
+                                 cx=self.cx,
+                                 cy=self.cy,
+                                 )
+
+        extrinsic = np.linalg.inv(pose)
+        frame_pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic, extrinsic)
+
+        return frame_pcd
 
 class PriorityPolicy:
     def __init__(self):

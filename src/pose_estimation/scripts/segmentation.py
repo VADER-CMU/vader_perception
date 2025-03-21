@@ -14,7 +14,7 @@ class Segmentation:
         self.model = YOLO(weights_path)
         self.model.to(self.device)
 
-    def infer(self, rgb_image, confidence=0.8):
+    def infer(self, rgb_image, confidence=0.8, verbose=True):
         """
         Runs the inference on a single image
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -22,7 +22,7 @@ class Segmentation:
         Returns: results (list): List of results containing bounding box coordinates, class labels, and confidence
         """
         # Load image
-        results = self.model.predict(rgb_image, conf=confidence)
+        results = self.model.predict(rgb_image, conf=confidence, verbose=verbose)
         
         return results
     

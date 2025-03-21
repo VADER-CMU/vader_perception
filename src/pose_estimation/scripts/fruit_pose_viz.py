@@ -76,13 +76,11 @@ class FruitDetectionNode:
                 result = results[0]
                 masks = result.masks
                 if not masks is None:
-                    mask = masks.data[0].cpu().numpy().astype('uint8') * 255
+                    mask = masks.data[0].cpu().numpy().astype('uint16')
+                    segmentation_mask = np.pad(mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
                     print("masks: ", mask.shape)
 
-                    mask_pcd = PoseEst.coarse_fruit_pose_estimation(self.latest_depth, mask)
-                    mean_x, mean_y, mean_z = mask_pcd.mean(axis=0)
-                    # self.fruit_pcd = mask_pcd
-                    self.position = np.array([mean_x, mean_y, mean_z])
+                    self.position = PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, segmentation_mask)
 
                     
                 

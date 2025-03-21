@@ -18,12 +18,12 @@ class FruitDetectionNode:
 
         self.latest_depth = None
         self.latest_image = None
-        self.position = np.array([0.0, 0.0, 0.0])
-        self.quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+        self.position = None
+        self.quaternion = np.array([0.0, 0.0, 0.0, 1.0])
         
-        self.pose_publisher = rospy.Publisher('fruit_pose', Pepper, queue_size=10)
+        self.pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
 
-        rospy.Subscriber("/camera/aligned_depth_to_color/image_raw", Image, self.depth_callback)
+        rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
 
         self.rate = rospy.Rate(10)
@@ -35,7 +35,6 @@ class FruitDetectionNode:
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
             depth_np = np.array(cv_image)
-            rospy.logdebug("Converted image to numpy array")
         except CvBridgeError as e:
             rospy.logerr("CvBridge Error: {0}".format(e))   
         
@@ -49,7 +48,6 @@ class FruitDetectionNode:
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             image_np = np.array(cv_image)
-            rospy.logdebug("Converted image to numpy array")
         except CvBridgeError as e:
             rospy.logerr("CvBridge Error: {0}".format(e))
         
@@ -66,43 +64,44 @@ class FruitDetectionNode:
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
                 
+                results = Seg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=True)
                 
-                print("Latest Image shape: ", self.latest_image.shape)
-                results = Seg.infer(self.latest_image[:, 104:744, :], confidence=0.8)
+                # Pepper priority policy here
                 result = results[0]
                 masks = result.masks
+
                 if not masks is None:
-                    mask = masks.data[0].cpu().numpy().astype('uint8') * 255
-                    print("masks: ", mask.shape)
+                    mask = masks.data[0].cpu().numpy().astype('uint16')
+                    mask = np.pad(mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
 
-                    mask_pcd = PoseEst.coarse_fruit_pose_estimation(self.latest_depth, mask)
-                    mean_x, mean_y, mean_z = mask_pcd.mean(axis=0)
-                    # self.fruit_pcd = mask_pcd
-                    self.position = np.array([mean_x, mean_y, mean_z])
-
+                    self.position = PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, mask)
                     
-                # Create a PoseStamped message
-                pose_msg = Pepper()
                 
-                # Set header information
-                pose_msg.header.stamp = rospy.Time.now()
-                pose_msg.header.frame_id = "camera_depth_optical_frame"  # Use appropriate frame ID
-    
-                pose_msg.fruit_data.pose.position.x = self.position[0]
-                pose_msg.fruit_data.pose.position.y = self.position[1]
-                pose_msg.fruit_data.pose.position.z = self.position[2]
-                
-                # Set orientation (identity quaternion in this example)
-                pose_msg.fruit_data.pose.orientation.x = 1.0
-                pose_msg.fruit_data.pose.orientation.y = 0.0
-                pose_msg.fruit_data.pose.orientation.z = 0.0
-                pose_msg.fruit_data.pose.orientation.w = 0.0
+                if self.position is not None:
+                    # Create a PoseStamped message
+                    pose_msg = Pepper()
+                    
+                    # Set header information
+                    pose_msg.header.stamp = rospy.Time.now()
+                    pose_msg.header.frame_id = "camera_depth_optical_frame"  # Use appropriate frame ID
+        
+                    pose_msg.fruit_data.pose.position.x = self.position[0]
+                    pose_msg.fruit_data.pose.position.y = self.position[1]
+                    pose_msg.fruit_data.pose.position.z = self.position[2]
+                    
+                    # Set orientation (identity quaternion in this example)
+                    pose_msg.fruit_data.pose.orientation.x = 0.0
+                    pose_msg.fruit_data.pose.orientation.y = 0.0
+                    pose_msg.fruit_data.pose.orientation.z = 0.0
+                    pose_msg.fruit_data.pose.orientation.w = 1.0
 
-
+                    # Set size of the pepper
+                    pose_msg.fruit_data.shape.type = 3 #cylinder
+                    pose_msg.fruit_data.shape.dimensions = [0.1, 0.075]
                 
-                # Publish the pose
-                self.pose_publisher.publish(pose_msg)
-                rospy.loginfo("Published fruit pose")
+                    # Publish the pose
+                    self.pose_publisher.publish(pose_msg)
+
             
             self.rate.sleep()
 
