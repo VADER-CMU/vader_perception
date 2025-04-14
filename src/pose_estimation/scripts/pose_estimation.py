@@ -6,6 +6,7 @@ from PIL import Image, ImageDraw
 import numpy as np
 import yaml
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation as R
 
 class PoseEstimation:
     def __init__(self):
@@ -48,10 +49,11 @@ class PoseEstimation:
         pose = np.eye(4)
         pcd = self.rgbd_to_pcd(rgb, depth, mask, pose)
         center = pcd.get_center()
-        return center
+        quaternion = np.array([0, 0, 0, 1])
+        return center, quaternion
     
 
-    def fine_fruit_pose_estimation(self, rgb_image, depth_image, mask):
+    def fine_fruit_pose_estimation(self, rgb_image, depth_image, fruit_mask, peduncle_mask):
         """
         Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -60,13 +62,26 @@ class PoseEstimation:
         Returns: position (np.ndarray): Position of the fruit in the camera frame
                  quaternion (np.ndarray): Orientation of the fruit in the camera frame
         """
+        pose = np.eye(4)
+        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, fruit_mask, pose)
+        fruit_center = fruit_pcd.get_center()
 
-        # Placeholder implementation for quaternion
+        peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, peduncle_mask, pose)
+        peduncle_center = peduncle_pcd.get_center()
 
-        # Placeholder implementation for position
-        position = np.array([0.0, 0.0, 0.0])
-        # A quaternion is represented as [w, x, y, z]
-        quaternion = np.array([1.0, 0.0, 0.0, 0.0])
+        position = fruit_center
+
+        axis_vector = peduncle_center - fruit_center
+        norm = np.linalg.norm(axis_vector)
+        if norm < 1e-6:
+            return position, None
+        
+        axis_vector = axis_vector / norm
+
+        rot, _ = R.align_vectors([axis_vector], [[0, 0, 1]])
+        quaternion = rot.as_quat()
+        # print("quaternion: ", quaternion)
+        
         return position, quaternion
 
     def rgbd_to_pcd(self, rgb, depth, mask, pose=np.eye(4)):
@@ -103,20 +118,8 @@ class PoseEstimation:
 
         return frame_pcd
 
-class PriorityPolicy:
-    def __init__(self):
+    def get_priority_mask(self, results):
         pass
-
-    def get_priority(self, fruit_list):
-        """
-        Get the priority of the fruit based on the policy
-        Args: fruit_list (list): List of fruits detected in the image
-        Returns: priority_list (list): List of priorities for each fruit
-        """
-
-        """
-        Ideas largest visible fruit, nearest fruit, fruit with highest confidence
-        """
-        priority_list = [0.0] * len(fruit_list)
-        return priority_list
+        
+        
 

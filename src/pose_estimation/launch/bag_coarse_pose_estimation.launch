@@ -1,0 +1,13 @@
+<launch>
+
+  <arg name="pkg_path" value="$(find pose_estimation)" />
+  
+  <!-- Then set the weights_path parameter with the resolved path -->
+  <param name="weights_path" value="$(arg pkg_path)/weights/orientation.pt" />
+  <!-- Start the fruit detection node -->
+  <node name="fruit_coarse_pose" pkg="pose_estimation" type="fruit_coarse_pose.py" output="screen">
+  <!-- <node name="fruit_pcd" pkg="pose_estimation" type="fruit_point_cloud2.py" output="screen"> -->
+    <!-- You can add parameters here if neehhd -->
+    <!-- <param name="detection_threshold" value="0.75" /> -->
+  </node>
+</launch>

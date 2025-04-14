@@ -15,7 +15,7 @@
   <arg name="pkg_path" value="$(find pose_estimation)" />
   
   <!-- Then set the weights_path parameter with the resolved path -->
-  <param name="weights_path" value="$(arg pkg_path)/weights/yolov8l-seg-300.pt" />
+  <param name="weights_path" value="$(arg pkg_path)/weights/peduncle_2.pt" />
   <!-- Start the fruit detection node -->
 
   <!-- Nodes For Debugging  -->

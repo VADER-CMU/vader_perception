@@ -15,7 +15,8 @@
   <arg name="pkg_path" value="$(find pose_estimation)" />
   
   <!-- Then set the weights_path parameter with the resolved path -->
-  <param name="weights_path" value="$(arg pkg_path)/weights/yolov8l-seg-300.pt" />
+  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/orientation2.pt" />
+  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle_2.pt" />
   <!-- Start the fruit detection node -->
   <node name="fruit_coarse_pose" pkg="pose_estimation" type="fruit_coarse_pose.py" output="screen">
   <!-- <node name="fruit_pcd" pkg="pose_estimation" type="fruit_point_cloud2.py" output="screen"> -->
