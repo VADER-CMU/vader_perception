@@ -95,7 +95,7 @@ class FruitDetectionNode:
                     peduncle_mask = np.pad(peduncle_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
 
                     kernel = np.ones((5, 5), np.uint8)
-                    peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=2)
+                    peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=3)
                     
 
                     self.position, self.quaternion = PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
@@ -129,10 +129,10 @@ class FruitDetectionNode:
 
                     if self.quaternion is not None:
                         # Set orientation (identity quaternion in this example)
-                        pose_msg.pose.orientation.x = self.quaternion[1]
-                        pose_msg.pose.orientation.y = self.quaternion[2]
-                        pose_msg.pose.orientation.z = self.quaternion[3]
-                        pose_msg.pose.orientation.w = self.quaternion[0]
+                        pose_msg.pose.orientation.x = self.quaternion[0]
+                        pose_msg.pose.orientation.y = self.quaternion[1]
+                        pose_msg.pose.orientation.z = self.quaternion[2]
+                        pose_msg.pose.orientation.w = self.quaternion[3]
                     else:
                         pose_msg.pose.orientation.x = 1.0
                         pose_msg.pose.orientation.y = 0.0

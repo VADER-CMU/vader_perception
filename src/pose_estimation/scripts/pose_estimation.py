@@ -72,16 +72,17 @@ class PoseEstimation:
         position = fruit_center
 
         axis_vector = peduncle_center - fruit_center
-        norm = np.linalg.norm(axis_vector)
-        if norm < 1e-6:
-            return position, None
+        a_x = np.cross(axis_vector, fruit_center)
+        a_x_hat = a_x/ np.linalg.norm(a_x)
+        a_z = axis_vector #- (np.dot(axis_vector, a_x_hat)*a_x_hat)
+        a_z_hat = a_z/ np.linalg.norm(a_z)
+        a_y_hat = np.cross(a_z_hat, a_x_hat)
         
-        axis_vector = axis_vector / norm
-
-        rot, _ = R.align_vectors([axis_vector], [[0, 0, 1]])
-        quaternion = rot.as_quat()
-        # print("quaternion: ", quaternion)
+        R_co = np.array([a_x_hat, a_y_hat, a_z_hat]).T
+        r = R.from_matrix(R_co)
+        quaternion = r.as_quat()  # [x, y, z, w]
         
+        # print(quaternion)
         return position, quaternion
 
     def rgbd_to_pcd(self, rgb, depth, mask, pose=np.eye(4)):
