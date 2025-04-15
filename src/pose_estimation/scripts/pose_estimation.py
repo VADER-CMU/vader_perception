@@ -61,6 +61,7 @@ class PoseEstimation:
               mask (np.ndarray): A singular mask of a detected target fruit
         Returns: position (np.ndarray): Position of the fruit in the camera frame
                  quaternion (np.ndarray): Orientation of the fruit in the camera frame
+                 peduncle_center (np.ndarray): Center of the peduncle in the camera frame
         """
         pose = np.eye(4)
         fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, fruit_mask, pose)
@@ -83,7 +84,7 @@ class PoseEstimation:
         quaternion = r.as_quat()  # [x, y, z, w]
         
         # print(quaternion)
-        return position, quaternion
+        return position, quaternion, peduncle_center
 
     def rgbd_to_pcd(self, rgb, depth, mask, pose=np.eye(4)):
         """

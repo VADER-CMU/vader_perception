@@ -20,8 +20,13 @@ class FruitDetectionNode:
         self.latest_image = None
         self.position = None
         self.quaternion = None 
+
+        self.peduncle_position = None
         
-        self.pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
+        self.coarse_pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
+        self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
+
+        self.debug_fine_pose_pub = rospy.Publisher('debug_fine_pose', PoseStamped, queue_size=10)
 
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
@@ -95,10 +100,10 @@ class FruitDetectionNode:
                     peduncle_mask = np.pad(peduncle_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
 
                     kernel = np.ones((5, 5), np.uint8)
-                    peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=3)
+                    # peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=3)
                     
 
-                    self.position, self.quaternion = PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
+                    self.position, self.quaternion, self.peduncle_position = PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
 
                 elif not fruit_masks is None:
                     # print("Number of detected masks: ", len(fruit_result.masks.data))
@@ -115,42 +120,83 @@ class FruitDetectionNode:
                 
                 if self.position is not None:
 
-                    center = self.position
-                    # Create a PoseStamped message
-                    pose_msg = Pepper()
-                    
-                    # Set header information
-                    pose_msg.header.stamp = rospy.Time.now()
-                    pose_msg.header.frame_id = "camera_depth_optical_frame"  # Use appropriate frame ID
-        
-                    pose_msg.fruit_data.pose.position.x = center[0]
-                    pose_msg.fruit_data.pose.position.y = center[1]
-                    pose_msg.fruit_data.pose.position.z = center[2]
-
-                    if self.quaternion is not None:
+                    # Do we have orientation? If so, we have fine pose estimation
+                    if self.peduncle_position is not None:
+                        # Publish on fine pose topic
+                        center = self.position
+                        # Create a PoseStamped message
+                        fine_pose_msg = Pepper()
+                        
+                        # Set header information
+                        fine_pose_msg.header.stamp = rospy.Time.now()
+                        fine_pose_msg.header.frame_id = "camera_depth_optical_frame"  # Use appropriate frame ID
+            
+                        fine_pose_msg.fruit_data.pose.position.x = center[0]
+                        fine_pose_msg.fruit_data.pose.position.y = center[1]
+                        fine_pose_msg.fruit_data.pose.position.z = center[2]
                         # Set orientation (identity quaternion in this example)
-                        pose_msg.fruit_data.pose.orientation.x = self.quaternion[0]
-                        pose_msg.fruit_data.pose.orientation.y = self.quaternion[1]
-                        pose_msg.fruit_data.pose.orientation.z = self.quaternion[2]
-                        pose_msg.fruit_data.pose.orientation.w = self.quaternion[3]
-                    else:
-                        pose_msg.fruit_data.pose.orientation.x = 1.0
-                        pose_msg.fruit_data.pose.orientation.y = 0.0
-                        pose_msg.fruit_data.pose.orientation.z = 0.0
-                        pose_msg.fruit_data.pose.orientation.w = 0.0
+                        fine_pose_msg.fruit_data.pose.orientation.x = self.quaternion[0]
+                        fine_pose_msg.fruit_data.pose.orientation.y = self.quaternion[1]
+                        fine_pose_msg.fruit_data.pose.orientation.z = self.quaternion[2]
+                        fine_pose_msg.fruit_data.pose.orientation.w = self.quaternion[3]
+                        
+                        # Set peduncle center with self.peduncle_position
+                        fine_pose_msg.peduncle_data.pose.position.x = self.peduncle_position[0]
+                        fine_pose_msg.peduncle_data.pose.position.y = self.peduncle_position[1]
+                        fine_pose_msg.peduncle_data.pose.position.z = self.peduncle_position[2]
+                        # Set peduncle orientation
+                        fine_pose_msg.peduncle_data.pose.orientation.x = self.quaternion[0]
+                        fine_pose_msg.peduncle_data.pose.orientation.y = self.quaternion[1]
+                        fine_pose_msg.peduncle_data.pose.orientation.z = self.quaternion[2]
+                        fine_pose_msg.peduncle_data.pose.orientation.w = self.quaternion[3]
+
+                        fine_pose_msg.fruit_data.shape.type = 3 #cylinder
+                        fine_pose_msg.fruit_data.shape.dimensions = [0.1, 0.075]
+                        fine_pose_msg.peduncle_data.shape.type = 3 #cylinder
+                        fine_pose_msg.peduncle_data.shape.dimensions = [0.02, 0.002]
+                        self.fine_pose_publisher.publish(fine_pose_msg)
+
+                        # Publish on debug topic
+                        debug_pose_msg = PoseStamped()
+                        debug_pose_msg.header.stamp = rospy.Time.now()
+                        debug_pose_msg.header.frame_id = "camera_depth_optical_frame"
+                        debug_pose_msg.pose.position.x = center[0]
+                        debug_pose_msg.pose.position.y = center[1]
+                        debug_pose_msg.pose.position.z = center[2]
+                        debug_pose_msg.pose.orientation.x = self.quaternion[0]
+                        debug_pose_msg.pose.orientation.y = self.quaternion[1]
+                        debug_pose_msg.pose.orientation.z = self.quaternion[2]
+                        debug_pose_msg.pose.orientation.w = self.quaternion[3]
+                        self.debug_fine_pose_pub.publish(debug_pose_msg)
+
+                        # Set orientation to None again to avoid publishing old data
+                        self.peduncle_position = None
+
+                    coarse_pose_msg = Pepper()
+                    coarse_pose_msg.header.stamp = rospy.Time.now()
+                    coarse_pose_msg.header.frame_id = "camera_depth_optical_frame"
+                    coarse_pose_msg.fruit_data.pose.position.x = self.position[0]
+                    coarse_pose_msg.fruit_data.pose.position.y = self.position[1]
+                    coarse_pose_msg.fruit_data.pose.position.z = self.position[2]
                     
+                    coarse_pose_msg.fruit_data.pose.orientation.x = 1.0
+                    coarse_pose_msg.fruit_data.pose.orientation.y = 0.0
+                    coarse_pose_msg.fruit_data.pose.orientation.z = 0.0
+                    coarse_pose_msg.fruit_data.pose.orientation.w = 0.0
+                
+                    # Set size of the pepper
+                    coarse_pose_msg.fruit_data.shape.type = 3 #cylinder
+                    coarse_pose_msg.fruit_data.shape.dimensions = [0.1, 0.075]
+
                     # Set orientation (identity quaternion in this example)
                     # pose_msg.pose.orientation.x = quaternion[1]
                     # pose_msg.pose.orientation.y = quaternion[2]
                     # pose_msg.pose.orientation.z = quaternion[3]
                     # pose_msg.pose.orientation.w = quaternion[0]
 
-                    # Set size of the pepper
-                    pose_msg.fruit_data.shape.type = 3 #cylinder
-                    pose_msg.fruit_data.shape.dimensions = [0.1, 0.075]
                 
                     # Publish the pose
-                    self.pose_publisher.publish(pose_msg)
+                    self.coarse_pose_publisher.publish(coarse_pose_msg)
 
             
             self.rate.sleep()
