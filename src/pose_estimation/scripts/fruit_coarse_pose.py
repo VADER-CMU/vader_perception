@@ -146,8 +146,8 @@ class FruitDetectionNode:
                     # pose_msg.pose.orientation.w = quaternion[0]
 
                     # Set size of the pepper
-                    # pose_msg.shape.type = 3 #cylinder
-                    # pose_msg.shape.dimensions = [0.1, 0.075]
+                    pose_msg.fruit_data.shape.type = 3 #cylinder
+                    pose_msg.fruit_data.shape.dimensions = [0.1, 0.075]
                 
                     # Publish the pose
                     self.pose_publisher.publish(pose_msg)
