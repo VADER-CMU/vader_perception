@@ -21,7 +21,7 @@ class FruitDetectionNode:
         self.position = None
         self.quaternion = None 
         
-        self.pose_publisher = rospy.Publisher('fruit_coarse_pose', PoseStamped, queue_size=10)
+        self.pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
 
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
@@ -117,27 +117,27 @@ class FruitDetectionNode:
 
                     center = self.position
                     # Create a PoseStamped message
-                    pose_msg = PoseStamped()
+                    pose_msg = Pepper()
                     
                     # Set header information
                     pose_msg.header.stamp = rospy.Time.now()
                     pose_msg.header.frame_id = "camera_depth_optical_frame"  # Use appropriate frame ID
         
-                    pose_msg.pose.position.x = center[0]
-                    pose_msg.pose.position.y = center[1]
-                    pose_msg.pose.position.z = center[2]
+                    pose_msg.fruit_data.pose.position.x = center[0]
+                    pose_msg.fruit_data.pose.position.y = center[1]
+                    pose_msg.fruit_data.pose.position.z = center[2]
 
                     if self.quaternion is not None:
                         # Set orientation (identity quaternion in this example)
-                        pose_msg.pose.orientation.x = self.quaternion[0]
-                        pose_msg.pose.orientation.y = self.quaternion[1]
-                        pose_msg.pose.orientation.z = self.quaternion[2]
-                        pose_msg.pose.orientation.w = self.quaternion[3]
+                        pose_msg.fruit_data.pose.orientation.x = self.quaternion[0]
+                        pose_msg.fruit_data.pose.orientation.y = self.quaternion[1]
+                        pose_msg.fruit_data.pose.orientation.z = self.quaternion[2]
+                        pose_msg.fruit_data.pose.orientation.w = self.quaternion[3]
                     else:
-                        pose_msg.pose.orientation.x = 1.0
-                        pose_msg.pose.orientation.y = 0.0
-                        pose_msg.pose.orientation.z = 0.0
-                        pose_msg.pose.orientation.w = 0.0
+                        pose_msg.fruit_data.pose.orientation.x = 1.0
+                        pose_msg.fruit_data.pose.orientation.y = 0.0
+                        pose_msg.fruit_data.pose.orientation.z = 0.0
+                        pose_msg.fruit_data.pose.orientation.w = 0.0
                     
                     # Set orientation (identity quaternion in this example)
                     # pose_msg.pose.orientation.x = quaternion[1]
