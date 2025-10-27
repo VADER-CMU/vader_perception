@@ -5,3 +5,7 @@ rosbags/
 raw_data/
 raw_data2/
 raw_data3/
+
+__pycache__/
+.vscode/
+
