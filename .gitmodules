@@ -1,0 +1,6 @@
+[submodule "src/vader_msgs"]
+	path = src/vader_msgs
+	url = https://github.com/VADER-CMU/vader_msgs
+[submodule "src/realsense-ros"]
+	path = src/realsense-ros
+	url = https://github.com/VADER-CMU/realsense-ros.git

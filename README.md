@@ -18,4 +18,12 @@ Clone this repository into your workspace. In addition to this, make sure that t
 
 ## Usage
 
+```bash
+git clone https://github.com/VADER-CMU/vader_perception.git --branch svd-archive
+cd vader_perception/
+git submodule update --init --recursive
+catkin_make
+source devel/setup.bash
+```
+
 Use ROSLaunch with `coarse_pose_estimation.launch` to launch the pose estimation script.
