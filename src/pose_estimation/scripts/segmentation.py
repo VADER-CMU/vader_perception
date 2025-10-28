@@ -44,7 +44,7 @@ class Segmentation:
             resized_frame = frame[:, 104:744, :]
             
             # YOLO instance segmentation prediction
-            results = self.infer(resized_frame)
+            results = self.infer(resized_frame, verbose=False)
 
             annotated_frame = np.array(resized_frame)
             

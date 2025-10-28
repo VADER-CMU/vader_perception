@@ -70,16 +70,16 @@ class FruitDetectionNode:
         while not rospy.is_shutdown():
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
-                print(self.latest_image.shape)
+                # print(self.latest_image.shape)
                 
-                fruit_results = FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=True)
+                fruit_results = FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
                 
                 
                 # Pepper priority policy here
                 fruit_result = fruit_results[0]
                 fruit_masks = fruit_result.masks
 
-                peduncle_results = PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=True)
+                peduncle_results = PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
                 
                 
                 # Pepper priority policy here
@@ -91,7 +91,7 @@ class FruitDetectionNode:
 
                 if not fruit_masks is None and not peduncle_masks is None:
                     # print("Number of detected masks: ", len(fruit_result.masks.data))
-                    print(" Peduncle Detected ")
+                    # print(" Peduncle Detected ")
                     # print(fruit_masks.data.shape)
                     fruit_mask = fruit_masks.data[0].cpu().numpy().astype('uint16')
                     fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
@@ -183,10 +183,22 @@ class FruitDetectionNode:
                     coarse_pose_msg.fruit_data.pose.orientation.y = 0.0
                     coarse_pose_msg.fruit_data.pose.orientation.z = 0.0
                     coarse_pose_msg.fruit_data.pose.orientation.w = 0.0
+
+                    coarse_pose_msg.peduncle_data.pose.position.x = self.position[0]
+                    coarse_pose_msg.peduncle_data.pose.position.y = self.position[1]
+                    coarse_pose_msg.peduncle_data.pose.position.z = self.position[2]
+
+                    coarse_pose_msg.peduncle_data.pose.orientation.x = 1.0
+                    coarse_pose_msg.peduncle_data.pose.orientation.y = 0.0
+                    coarse_pose_msg.peduncle_data.pose.orientation.z = 0.0
+                    coarse_pose_msg.peduncle_data.pose.orientation.w = 0.0
                 
                     # Set size of the pepper
                     coarse_pose_msg.fruit_data.shape.type = 3 #cylinder
                     coarse_pose_msg.fruit_data.shape.dimensions = [0.1, 0.075]
+
+                    coarse_pose_msg.peduncle_data.shape.type=3
+                    coarse_pose_msg.peduncle_data.shape.dimensions = [0.02, 0.002]
 
                     # Set orientation (identity quaternion in this example)
                     # pose_msg.pose.orientation.x = quaternion[1]
