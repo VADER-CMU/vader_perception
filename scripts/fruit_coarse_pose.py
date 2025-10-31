@@ -8,7 +8,8 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 import sensor_msgs.point_cloud2 as pc2
-from pose_estimation import PoseEstimation, Segmentation
+from pose_estimation import PoseEstimation
+from segmentation import Segmentation
 from msg_utils import pack_pepper_message, pack_debug_fruit_message
 
 class FruitDetectionNode:
@@ -19,11 +20,15 @@ class FruitDetectionNode:
         self.latest_depth = None
         self.latest_image = None
         self.position = None
-        self.quaternion = None
-        self.debug_pepper_pcd = None 
+        self.quaternion = None 
 
         self.peduncle_position = None
-        
+
+        fruit_model_path = rospy.get_param('fruit_weights_path')
+        peduncle_model_path = rospy.get_param('peduncle_weights_path')
+        self.FruitSeg = Segmentation(fruit_model_path) 
+        self.PeduncleSeg = Segmentation(peduncle_model_path) 
+
         self.coarse_pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
 
@@ -63,37 +68,30 @@ class FruitDetectionNode:
     def process_data_and_publish(self):
 
         PoseEst = PoseEstimation()
-        fruit_model_path = rospy.get_param('fruit_weights_path')
-        peduncle_model_path = rospy.get_param('peduncle_weights_path')
-        FruitSeg = Segmentation(fruit_model_path) 
-        PeduncleSeg = Segmentation(peduncle_model_path) 
+
         # Main processing loop
         while not rospy.is_shutdown():
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
-                print(self.latest_image.shape)
+                # print(self.latest_image.shape)
                 
-                fruit_results = FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=True)
+                fruit_results = FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
                 
                 
                 # Pepper priority policy here
                 fruit_result = fruit_results[0]
                 fruit_masks = fruit_result.masks
 
-                peduncle_results = PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=True)
+                peduncle_results = PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
                 
                 
                 # Pepper priority policy here
                 peduncle_result = peduncle_results[0]
                 peduncle_masks = peduncle_result.masks
-                # print(result.probs)
 
                 
 
                 if not fruit_masks is None and not peduncle_masks is None:
-                    # print("Number of detected masks: ", len(fruit_result.masks.data))
-                    print(" Peduncle Detected ")
-                    # print(fruit_masks.data.shape)
                     fruit_mask = fruit_masks.data[0].cpu().numpy().astype('uint16')
                     fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
 
@@ -114,26 +112,27 @@ class FruitDetectionNode:
                     
 
                     self.position, _ = PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask)
+
                 
                 if self.position is not None:
 
                     # Do we have orientation? If so, we have fine pose estimation
                     if self.peduncle_position is not None:
                         # Publish on fine pose topic
-                        
-                        fine_pose_msg = pack_pepper_message(self.position, self.quaternion, self.peduncle_position)
+                        fine_pose_msg = pack_pepper_message(position=self.position, quaternion=self.quaternion, peduncle_position=self.peduncle_position, frame_id="camera_depth_optical_frame")
                         self.fine_pose_publisher.publish(fine_pose_msg)
 
                         # Publish on debug topic
-                        debug_pose_msg = pack_debug_fruit_message(self.position, self.quaternion)
+                        debug_pose_msg = pack_debug_fruit_message(position=self.position, quaternion=self.quaternion, frame_id="camera_depth_optical_frame")
                         self.debug_fine_pose_pub.publish(debug_pose_msg)
 
                         # Set orientation to None again to avoid publishing old data
                         self.peduncle_position = None
-                        self.quaternion = None
 
-                    coarse_pose_msg = pack_pepper_message(self.position)
-                    # Publish the pose
+                    # Compute the "up" orientation based on the robot base frame
+                    up_orientation  = ...
+                    
+                    coarse_pose_msg = pack_pepper_message(position=self.position, quaternion=up_orientation, frame_id="camera_depth_optical_frame")
                     self.coarse_pose_publisher.publish(coarse_pose_msg)
 
             

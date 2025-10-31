@@ -3,7 +3,8 @@ import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
-
+import gdown
+import pathlib
 from ultralytics import YOLO
 
 class PoseEstimation:
@@ -117,6 +118,14 @@ class Segmentation:
               device (str): Device to run inference on (default: 'cuda')
         """
         self.device = device
+
+        # if weights path exists, load the model
+        if not pathlib.Path(weights_path).exists():
+            # else gdown from google drive
+            print("Downloading weights...")
+            pathlib.Path(weights_path).parent.mkdir(parents=True, exist_ok=True)
+            if 'fruit' in weights_path:
+                gdown.download("https://drive.google.com/uc?id=1_kuyxxjhLSO_9Qc4DXDPB84h3xaq5qUK", weights_path, quiet=False)
         self.model = YOLO(weights_path)
         self.model.to(self.device)
 
