@@ -111,13 +111,14 @@ class PoseEstimation:
         pass
 
 class Segmentation:
-    def __init__(self, weights_path, device='cuda'):
+    def __init__(self, weights_path_url, device='cuda'):
         """
         A class to perform instance segmentation using YOLO series of models
         Args: model_cfg (str): Path to model configuration file
               device (str): Device to run inference on (default: 'cuda')
         """
         self.device = device
+        weights_path, drive_url = weights_path_url
 
         # if weights path exists, load the model
         if not pathlib.Path(weights_path).exists():
@@ -125,7 +126,7 @@ class Segmentation:
             print("Downloading weights...")
             pathlib.Path(weights_path).parent.mkdir(parents=True, exist_ok=True)
             if 'fruit' in weights_path:
-                gdown.download("https://drive.google.com/uc?id=1_kuyxxjhLSO_9Qc4DXDPB84h3xaq5qUK", weights_path, quiet=False)
+                gdown.download(drive_url, weights_path, quiet=False)
         self.model = YOLO(weights_path)
         self.model.to(self.device)
 

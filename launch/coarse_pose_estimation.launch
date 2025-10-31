@@ -16,7 +16,11 @@
   
   <!-- Then set the weights_path parameter with the resolved path -->
   <param name="fruit_weights_path" value="$(arg pkg_path)/weights/orientation2.pt" />
+  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=1_kuyxxjhLSO_9Qc4DXDPB84h3xaq5qUK" />
   <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle_2.pt" />
+  <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1_kuyxxjhLSO_9Qc4DXDPB84h3xaq5qUK" />
+  
+  
   <!-- Start the fruit detection node -->
   <node name="fruit_coarse_pose" pkg="pose_estimation" type="fruit_coarse_pose.py" output="screen">
   <!-- <node name="fruit_pcd" pkg="pose_estimation" type="fruit_point_cloud2.py" output="screen"> -->

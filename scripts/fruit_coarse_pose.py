@@ -25,9 +25,12 @@ class FruitDetectionNode:
         self.peduncle_position = None
 
         fruit_model_path = rospy.get_param('fruit_weights_path')
+        fruit_drive_url = rospy.get_param('fruit_drive_url')
         peduncle_model_path = rospy.get_param('peduncle_weights_path')
-        self.FruitSeg = Segmentation(fruit_model_path) 
-        self.PeduncleSeg = Segmentation(peduncle_model_path) 
+        peduncle_drive_url = rospy.get_param('peduncle_drive_url')
+
+        self.FruitSeg = Segmentation((fruit_model_path, fruit_drive_url)) 
+        self.PeduncleSeg = Segmentation((peduncle_model_path, peduncle_drive_url)) 
 
         self.coarse_pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
@@ -74,15 +77,15 @@ class FruitDetectionNode:
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
                 # print(self.latest_image.shape)
-                
-                fruit_results = FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
-                
-                
+
+                fruit_results = self.FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
+
+
                 # Pepper priority policy here
                 fruit_result = fruit_results[0]
                 fruit_masks = fruit_result.masks
 
-                peduncle_results = PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
+                peduncle_results = self.PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
                 
                 
                 # Pepper priority policy here
@@ -130,7 +133,7 @@ class FruitDetectionNode:
                         self.peduncle_position = None
 
                     # Compute the "up" orientation based on the robot base frame
-                    up_orientation  = ...
+                    up_orientation  = [0, 0, 0, 1]  # To be changed
                     
                     coarse_pose_msg = pack_pepper_message(position=self.position, quaternion=up_orientation, frame_id="camera_depth_optical_frame")
                     self.coarse_pose_publisher.publish(coarse_pose_msg)
