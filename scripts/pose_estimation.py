@@ -118,15 +118,15 @@ class Segmentation:
               device (str): Device to run inference on (default: 'cuda')
         """
         self.device = device
-        weights_path, drive_url = weights_path_url
+        weights_path = weights_path_url["model_path"]
+        drive_url = weights_path_url["drive_url"]
 
-        # if weights path exists, load the model
         if not pathlib.Path(weights_path).exists():
-            # else gdown from google drive
-            print("Downloading weights...")
             pathlib.Path(weights_path).parent.mkdir(parents=True, exist_ok=True)
             if 'fruit' in weights_path:
+                print("Downloading weights...")
                 gdown.download(drive_url, weights_path, quiet=False)
+
         self.model = YOLO(weights_path)
         self.model.to(self.device)
 

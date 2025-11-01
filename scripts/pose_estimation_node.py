@@ -15,7 +15,7 @@ from msg_utils import pack_pepper_message, pack_debug_fruit_message
 class FruitDetectionNode:
     def __init__(self):
 
-        rospy.init_node('fruit_coarse_pose', anonymous=True)
+        rospy.init_node('pose_estimation', anonymous=True)
 
         self.latest_depth = None
         self.latest_image = None
@@ -24,15 +24,19 @@ class FruitDetectionNode:
 
         self.peduncle_position = None
 
-        fruit_model_path = rospy.get_param('fruit_weights_path')
-        fruit_drive_url = rospy.get_param('fruit_drive_url')
-        peduncle_model_path = rospy.get_param('peduncle_weights_path')
-        peduncle_drive_url = rospy.get_param('peduncle_drive_url')
+        fruit_model = {
+            "model_path": rospy.get_param('fruit_weights_path'), 
+            "drive_url": rospy.get_param('fruit_drive_url')
+        }
+        peduncle_model = {
+            "model_path": rospy.get_param('peduncle_weights_path'), 
+            "drive_url": rospy.get_param('peduncle_drive_url')
+        }
 
-        self.FruitSeg = Segmentation((fruit_model_path, fruit_drive_url)) 
-        self.PeduncleSeg = Segmentation((peduncle_model_path, peduncle_drive_url)) 
+        self.FruitSeg = Segmentation(fruit_model) 
+        self.PeduncleSeg = Segmentation(peduncle_model) 
 
-        self.coarse_pose_publisher = rospy.Publisher('fruit_coarse_pose', Pepper, queue_size=10)
+        self.coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
 
         self.debug_fine_pose_pub = rospy.Publisher('debug_fine_pose', PoseStamped, queue_size=10)
