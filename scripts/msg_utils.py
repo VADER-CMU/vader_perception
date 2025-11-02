@@ -1,5 +1,6 @@
 import rospy
 import numpy as np
+import open3d
 from geometry_msgs.msg import PoseStamped
 from vader_msgs.msg import Pepper
 import sensor_msgs.point_cloud2 as pc2
@@ -35,7 +36,7 @@ def pack_pepper_message(position, quaternion=None, peduncle_position=None, frame
     fine_pose_msg.fruit_data.pose.orientation.z = quaternion[2]
     fine_pose_msg.fruit_data.pose.orientation.w = quaternion[3]
 
-    if peduncle_position:
+    if peduncle_position is not None:
         # Set peduncle center with peduncle_position
         fine_pose_msg.peduncle_data.pose.position.x = peduncle_position[0]
         fine_pose_msg.peduncle_data.pose.position.y = peduncle_position[1]
@@ -84,18 +85,18 @@ def pack_debug_fruit_message(position, quaternion=None, frame_id="camera_depth_o
 
     return debug_fine_pose_msg
 
-def pack_debug_pcd(fruit_pcd, frame_id="camera_depth_optical_frame"):
+def pack_debug_pcd(fruit_pcd: open3d.geometry.PointCloud, frame_id="camera_depth_optical_frame"):
     """
     Packs the fruit point cloud into a PointCloud2 message.
     Args:
-        fruit_pcd (np.ndarray): Nx3 array of point cloud points.
+        fruit_pcd (open3d.geometry.PointCloud): The fruit point cloud.
     Returns:
         PointCloud2: A PointCloud2 message containing the fruit point cloud.
     """
     fruit_pcd_msg = PointCloud2()
     fruit_pcd_msg.header.stamp = rospy.Time.now()
     fruit_pcd_msg.header.frame_id = frame_id
-
-    fruit_pcd_msg = pc2.create_cloud_xyz32(fruit_pcd_msg.header, fruit_pcd)
+    fruit_points = np.asarray(fruit_pcd.points)
+    fruit_pcd_msg = pc2.create_cloud_xyz32(fruit_pcd_msg.header, fruit_points)
 
     return fruit_pcd_msg

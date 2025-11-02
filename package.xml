@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>pose_estimation</name>
+  <name>vader_perception</name>
   <version>0.0.0</version>
-  <description>The pose_estimation package</description>
+  <description>The vader pose estimation package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->

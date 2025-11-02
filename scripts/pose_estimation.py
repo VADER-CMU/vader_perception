@@ -36,7 +36,7 @@ class PoseEstimation:
         pose = np.eye(4)
         pcd = self.rgbd_to_pcd(rgb, depth, mask, pose)
         center = pcd.get_center()
-        quaternion = np.array([0, 0, 0, 1])
+        quaternion = None
         return center, quaternion, pcd
     
 
@@ -122,10 +122,7 @@ class Segmentation:
         drive_url = weights_path_url["drive_url"]
 
         if not pathlib.Path(weights_path).exists():
-            pathlib.Path(weights_path).parent.mkdir(parents=True, exist_ok=True)
-            if 'fruit' in weights_path:
-                print("Downloading weights...")
-                gdown.download(drive_url, weights_path, quiet=False)
+            gdown.download(drive_url, weights_path, quiet=False)
 
         self.model = YOLO(weights_path)
         self.model.to(self.device)

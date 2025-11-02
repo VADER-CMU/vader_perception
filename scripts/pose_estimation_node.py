@@ -8,9 +8,8 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 import sensor_msgs.point_cloud2 as pc2
-from pose_estimation import PoseEstimation
-from segmentation import Segmentation
-from msg_utils import pack_pepper_message, pack_debug_fruit_message
+from pose_estimation import PoseEstimation, Segmentation
+from msg_utils import pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd
 
 class FruitDetectionNode:
     def __init__(self):
@@ -21,6 +20,8 @@ class FruitDetectionNode:
         self.latest_image = None
         self.position = None
         self.quaternion = None 
+
+        self.fruit_pcd = None
 
         self.peduncle_position = None
 
@@ -40,6 +41,7 @@ class FruitDetectionNode:
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
 
         self.debug_fine_pose_pub = rospy.Publisher('debug_fine_pose', PoseStamped, queue_size=10)
+        self.debug_fruit_pcd_pub = rospy.Publisher('debug_fruit_pcd', PointCloud2, queue_size=10)
 
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
@@ -109,7 +111,7 @@ class FruitDetectionNode:
                     # peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=3)
                     
 
-                    self.position, self.quaternion, self.peduncle_position = PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
+                    self.position, self.quaternion, self.peduncle_position, self.fruit_pcd = PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
 
                 elif not fruit_masks is None:
                     # print("Number of detected masks: ", len(fruit_result.masks.data))
@@ -118,9 +120,8 @@ class FruitDetectionNode:
                     fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
                     
 
-                    self.position, _ = PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask)
+                    self.position, self.quaternion, self.fruit_pcd = PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask)
 
-                
                 if self.position is not None:
 
                     # Do we have orientation? If so, we have fine pose estimation
@@ -132,6 +133,8 @@ class FruitDetectionNode:
                         # Publish on debug topic
                         debug_pose_msg = pack_debug_fruit_message(position=self.position, quaternion=self.quaternion, frame_id="camera_depth_optical_frame")
                         self.debug_fine_pose_pub.publish(debug_pose_msg)
+                        debug_pcd_msg = pack_debug_pcd(self.fruit_pcd, frame_id="camera_depth_optical_frame")
+                        self.debug_fruit_pcd_pub.publish(debug_pcd_msg)
 
                         # Set orientation to None again to avoid publishing old data
                         self.peduncle_position = None
