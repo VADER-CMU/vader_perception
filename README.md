@@ -14,10 +14,21 @@ First Revision: February 2025
 
 This repository holds our pose estimation/perception stack, in charge of publishing coarse and fine pose estimates of peppers in the view of the gripper palm D405 Realsense camera.
 
-## Installation
+## Installation & Usage
+In your catkin workspace cd into `src`. Run the following commands to pull the latest version of `vader_perception` and other required packages.
+```bash
+git clone --depth 1 https://github.com/VADER-CMU/vader_perception.git
+git clone https://github.com/VADER-CMU/vader_msgs.git
+git clone https://github.com/VADER-CMU/realsense-ros.git
+```
 
-Clone this repository into your workspace. In addition to this, make sure that the realsense-ros ROS package from https://github.com/rjwb1/realsense-ros is cloned into the src folder of your workspace separately.
+Catkin make in the `catkin_ws`
+```bash
+catkin_make
+source devel/setup.bash
+```
 
-## Usage
-
-Use ROSLaunch with `coarse_pose_estimation.launch` to launch the pose estimation script.
+Launch the pose estimation node for the only the gripper camera
+```bash
+roslaunch vader_perception gripper_cam_pose_estimation.launch
+```
