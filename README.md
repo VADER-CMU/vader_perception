@@ -32,3 +32,8 @@ Launch the pose estimation node for the only the gripper camera
 ```bash
 roslaunch vader_perception gripper_cam_pose_estimation.launch
 ```
+
+Launch the pose estimation node for both cameras
+```bash
+roslaunch vader_perception dual_cam_pose_estimation.launch
+```
