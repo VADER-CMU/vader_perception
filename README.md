@@ -21,6 +21,10 @@ git clone --depth 1 https://github.com/VADER-CMU/vader_perception.git
 git clone https://github.com/VADER-CMU/vader_msgs.git
 git clone https://github.com/VADER-CMU/realsense-ros.git
 ```
+In the docker container, install `gdown`. (This will be added to vader_docker later)
+```bash
+pip install gdown
+```
 
 Catkin make in the `catkin_ws`
 ```bash
@@ -37,3 +41,4 @@ Launch the pose estimation node for both cameras
 ```bash
 roslaunch vader_perception dual_cam_pose_estimation.launch
 ```
+Note: One of the cameras may not start. Roslaunch again in that case.
