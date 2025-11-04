@@ -1,7 +1,11 @@
 <launch>
-  <!-- Launch the RealSense camera -->
+  <arg name="GRIPPER_CAM_SERIAL" value="128422272240" />
+  <arg name="CUTTER_CAM_SERIAL" value="130322272760" />
+
+  <!-- Gripper Camera -->
   <include file="$(find realsense2_camera)/launch/rs_camera.launch">
-    <!-- RealSense camera configuration parameters -->
+    <arg name="camera" value="gripper_cam" />
+    <arg name="serial_no" value="$(arg GRIPPER_CAM_SERIAL)" />
     <arg name="enable_pointcloud" value="true" />
     <arg name="align_depth" value="true" />
     <arg name="color_width" value="848" />
@@ -9,7 +13,22 @@
     <arg name="color_fps" value="30" />
     <arg name="depth_width" value="848" />
     <arg name="depth_height" value="480" />
-    <arg name="depth_fps" value="30" /> 
+    <arg name="depth_fps" value="30" />
+  </include>
+
+<!-- Cutter Camera -->
+
+  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+    <arg name="camera" value="cutter_cam" />
+    <arg name="serial_no" value="$(arg CUTTER_CAM_SERIAL)" />
+    <arg name="enable_pointcloud" value="true" />
+    <arg name="align_depth" value="true" />
+    <arg name="color_width" value="848" />
+    <arg name="color_height" value="480" />
+    <arg name="color_fps" value="30" />
+    <arg name="depth_width" value="848" />
+    <arg name="depth_height" value="480" />
+    <arg name="depth_fps" value="30" />
   </include>
 
   <arg name="pkg_path" value="$(find vader_perception)" />
@@ -22,9 +41,12 @@
   
   
   <!-- Start the fruit detection node -->
-  <node name="pose_estimation" pkg="vader_perception" type="pose_estimation_node.py" output="screen">
-  <!-- <node name="fruit_pcd" pkg="pose_estimation" type="fruit_point_cloud2.py" output="screen"> -->
-    <!-- You can add parameters here if neehhd -->
-    <!-- <param name="detection_threshold" value="0.75" /> -->
+  <node name="pose_estimation" pkg="vader_perception" type="dual_pose_estimation_node.py" output="screen">
+    <param name="pepper_confidence" value="0.8" />
+    <param name="peduncle_confidence" value="0.7" />
   </node>
+
+   <!-- Launch RViz with custom configuration -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/dual_cam.rviz" />
 </launch>
+

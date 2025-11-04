@@ -37,6 +37,12 @@ class FruitDetectionNode:
         self.FruitSeg = Segmentation(fruit_model) 
         self.PeduncleSeg = Segmentation(peduncle_model) 
 
+        self.pepper_confidence = rospy.get_param('pepper_confidence', 0.8)
+        self.peduncle_confidence = rospy.get_param('peduncle_confidence', 0.8)
+
+        self.pepper_confidence = rospy.get_param('pepper_confidence', 0.8)
+        self.peduncle_confidence = rospy.get_param('peduncle_confidence', 0.8)
+
         self.coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
 
@@ -84,16 +90,16 @@ class FruitDetectionNode:
             if self.latest_depth is not None and self.latest_image is not None:
                 # print(self.latest_image.shape)
 
-                fruit_results = self.FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
+                fruit_results = self.FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=self.pepper_confidence, verbose=False)
 
 
                 # Pepper priority policy here
                 fruit_result = fruit_results[0]
                 fruit_masks = fruit_result.masks
 
-                peduncle_results = self.PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=0.7, verbose=False)
-                
-                
+                peduncle_results = self.PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=self.peduncle_confidence, verbose=False)
+
+
                 # Pepper priority policy here
                 peduncle_result = peduncle_results[0]
                 peduncle_masks = peduncle_result.masks
@@ -129,15 +135,17 @@ class FruitDetectionNode:
                         # Publish on fine pose topic
                         fine_pose_msg = pack_pepper_message(position=self.position, quaternion=self.quaternion, peduncle_position=self.peduncle_position, frame_id="camera_depth_optical_frame")
                         self.fine_pose_publisher.publish(fine_pose_msg)
+                    
+                    coarse_pose_msg = pack_pepper_message(position=self.position, quaternion=self.quaternion, peduncle_position=self.peduncle_position, frame_id="camera_depth_optical_frame")
+                    self.coarse_pose_publisher.publish(coarse_pose_msg)
+                    # Publish on debug topic
+                    debug_pose_msg = pack_debug_fruit_message(position=self.position, quaternion=self.quaternion, frame_id="camera_depth_optical_frame")
+                    self.debug_fine_pose_pub.publish(debug_pose_msg)
+                    debug_pcd_msg = pack_debug_pcd(self.fruit_pcd, frame_id="camera_depth_optical_frame")
+                    self.debug_fruit_pcd_pub.publish(debug_pcd_msg)
 
-                        # Publish on debug topic
-                        debug_pose_msg = pack_debug_fruit_message(position=self.position, quaternion=self.quaternion, frame_id="camera_depth_optical_frame")
-                        self.debug_fine_pose_pub.publish(debug_pose_msg)
-                        debug_pcd_msg = pack_debug_pcd(self.fruit_pcd, frame_id="camera_depth_optical_frame")
-                        self.debug_fruit_pcd_pub.publish(debug_pcd_msg)
-
-                        # Set orientation to None again to avoid publishing old data
-                        self.peduncle_position = None
+                    # Set orientation to None again to avoid publishing old data
+                    self.peduncle_position = None
 
                     # Compute the "up" orientation based on the robot base frame
                     up_orientation  = [0, 0, 0, 1]  # To be changed

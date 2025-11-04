@@ -23,8 +23,10 @@
   
   <!-- Start the fruit detection node -->
   <node name="pose_estimation" pkg="vader_perception" type="pose_estimation_node.py" output="screen">
-  <!-- <node name="fruit_pcd" pkg="pose_estimation" type="fruit_point_cloud2.py" output="screen"> -->
-    <!-- You can add parameters here if neehhd -->
-    <!-- <param name="detection_threshold" value="0.75" /> -->
+    <param name="pepper_confidence" value="0.8" />
+    <param name="peduncle_confidence" value="0.7" />
   </node>
+
+  <!-- Launch RViz with custom configuration -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/gripper_cam.rviz" />
 </launch>
