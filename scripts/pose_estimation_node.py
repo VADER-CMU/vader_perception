@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 import rospy
-from sensor_msgs.msg import PointCloud2, Image
+from sensor_msgs.msg import PointCloud2, Image, CameraInfo
 from geometry_msgs.msg import PoseStamped
 from vader_msgs.msg import Pepper
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
-import sensor_msgs.point_cloud2 as pc2
 from pose_estimation import PoseEstimation, Segmentation
-from msg_utils import pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd
+from msg_utils import wait_for_camera_info, pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd
 
 class FruitDetectionNode:
     def __init__(self):
@@ -53,6 +52,8 @@ class FruitDetectionNode:
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
 
         self.rate = rospy.Rate(10)
+
+        self.camera_info_topic = '/camera/depth/camera_info'
         
         rospy.loginfo("Fruit detection node initialized")
     
@@ -82,10 +83,15 @@ class FruitDetectionNode:
     
     def process_data_and_publish(self):
 
-        PoseEst = PoseEstimation()
+        intrinsics = wait_for_camera_info(self.camera_info_topic, timeout=5.0)
+        if intrinsics is None:
+            rospy.logerr("Failed to get camera intrinsics. Check the camera.")
+        self.PoseEst = PoseEstimation(intrinsics)
+
 
         # Main processing loop
         while not rospy.is_shutdown():
+
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
                 # print(self.latest_image.shape)
@@ -117,7 +123,7 @@ class FruitDetectionNode:
                     # peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=3)
                     
 
-                    self.position, self.quaternion, self.peduncle_position, self.fruit_pcd = PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
+                    self.position, self.quaternion, self.peduncle_position, self.fruit_pcd = self.PoseEst.fine_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask, peduncle_mask)
 
                 elif not fruit_masks is None:
                     # print("Number of detected masks: ", len(fruit_result.masks.data))
@@ -126,7 +132,7 @@ class FruitDetectionNode:
                     fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
                     
 
-                    self.position, self.quaternion, self.fruit_pcd = PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask)
+                    self.position, self.quaternion, self.fruit_pcd = self.PoseEst.coarse_fruit_pose_estimation(self.latest_image, self.latest_depth, fruit_mask)
 
                 if self.position is not None:
 

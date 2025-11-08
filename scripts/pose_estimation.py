@@ -8,7 +8,8 @@ import pathlib
 from ultralytics import YOLO
 
 class PoseEstimation:
-    def __init__(self):       
+    def __init__(self, intrinsics=None): 
+
         # Default intrinsics for Intel Realsense D405
         self.fx = 421.3145751953125
         self.fy = 421.3145751953125
@@ -16,13 +17,13 @@ class PoseEstimation:
         self.cy = 244.68508911132812
         self.depth_scale = 0.001
 
-    def set_intrinsics(self, intrinsics):
+        if intrinsics is not None:
+            self.fx = intrinsics.get("fx", self.fx)
+            self.fy = intrinsics.get("fy", self.fy)
+            self.cx = intrinsics.get("cx", self.cx)
+            self.cy = intrinsics.get("cy", self.cy)
+            
 
-        self.fx = intrinsics["fx"]
-        self.fy = intrinsics["fy"]
-        self.cx = intrinsics["ppx"]
-        self.cy = intrinsics["ppy"]
-        self.depth_scale = intrinsics["depth_scale"]
 
     def coarse_fruit_pose_estimation(self, rgb, depth, mask):
         """

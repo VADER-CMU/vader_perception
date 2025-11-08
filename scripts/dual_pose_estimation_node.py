@@ -185,7 +185,7 @@ class FruitDetectionNode:
                     self.gripper_peduncle_position = None
 
                     # Compute the "up" orientation based on the robot base frame
-                    up_orientation  = [0, 0, 0, 1]  # To be changed
+                    up_orientation = [0, 0, 0, 1]  # To be changed
 
                     coarse_pose_msg = pack_pepper_message(position=self.gripper_position_estimate, quaternion=up_orientation, frame_id=self.gripper_cam_frame_id)
                     self.gripper_coarse_pose_publisher.publish(coarse_pose_msg)

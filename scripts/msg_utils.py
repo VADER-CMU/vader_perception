@@ -4,7 +4,7 @@ import open3d
 from geometry_msgs.msg import PoseStamped
 from vader_msgs.msg import Pepper
 import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, CameraInfo
 
 def pack_pepper_message(position, quaternion=None, peduncle_position=None, frame_id="camera_depth_optical_frame"):
     """
@@ -100,3 +100,29 @@ def pack_debug_pcd(fruit_pcd: open3d.geometry.PointCloud, frame_id="camera_depth
     fruit_pcd_msg = pc2.create_cloud_xyz32(fruit_pcd_msg.header, fruit_points)
 
     return fruit_pcd_msg
+
+def wait_for_camera_info(topic_name: str, timeout: float = 5.0):
+    """
+    Waits for camera info message on the specified topic.
+    Args:
+        topic_name (str): The topic name to wait for the camera info message.
+        timeout (float): The maximum time to wait for the message in seconds.
+    Returns:
+        CameraInfo: The received camera info message.
+    """
+    try:
+        cam_info_msg = rospy.wait_for_message(topic_name, CameraInfo, timeout=timeout)
+        fx = cam_info_msg.K[0]
+        fy = cam_info_msg.K[4]
+        cx = cam_info_msg.K[2]
+        cy = cam_info_msg.K[5]
+        camera_info = {
+            'fx': fx,
+            'fy': fy,
+            'cx': cx,
+            'cy': cy
+        }
+        return camera_info
+    except rospy.ROSException as e:
+        rospy.logerr(f"Timeout while waiting for camera info on topic {topic_name}: {e}")
+        return None
