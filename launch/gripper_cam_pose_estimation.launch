@@ -23,7 +23,7 @@
   
   <!-- Start the fruit detection node -->
   <node name="pose_estimation" pkg="vader_perception" type="pose_estimation_node.py" output="screen">
-    <param name="pepper_confidence" value="0.8" />
+    <param name="fruit_confidence" value="0.8" />
     <param name="peduncle_confidence" value="0.7" />
   </node>
 

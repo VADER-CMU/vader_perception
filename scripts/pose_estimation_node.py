@@ -24,23 +24,21 @@ class FruitDetectionNode:
 
         self.peduncle_position = None
 
-        fruit_model = {
-            "model_path": rospy.get_param('fruit_weights_path'), 
-            "drive_url": rospy.get_param('fruit_drive_url')
+        segmentation_models = {
+            "fruit": {
+                "model_path": rospy.get_param('fruit_weights_path'), 
+                "drive_url": rospy.get_param('fruit_drive_url'),
+                "confidence": rospy.get_param('fruit_confidence', 0.8)
+            },
+            "peduncle": {
+                "model_path": rospy.get_param('peduncle_weights_path'), 
+                "drive_url": rospy.get_param('peduncle_drive_url'),
+                "confidence": rospy.get_param('peduncle_confidence', 0.8)
+            }
         }
-        peduncle_model = {
-            "model_path": rospy.get_param('peduncle_weights_path'), 
-            "drive_url": rospy.get_param('peduncle_drive_url')
-        }
 
-        self.FruitSeg = Segmentation(fruit_model) 
-        self.PeduncleSeg = Segmentation(peduncle_model) 
-
-        self.pepper_confidence = rospy.get_param('pepper_confidence', 0.8)
-        self.peduncle_confidence = rospy.get_param('peduncle_confidence', 0.8)
-
-        self.pepper_confidence = rospy.get_param('pepper_confidence', 0.8)
-        self.peduncle_confidence = rospy.get_param('peduncle_confidence', 0.8)
+        self.FruitSeg = Segmentation(segmentation_models["fruit"]) 
+        self.PeduncleSeg = Segmentation(segmentation_models["peduncle"]) 
 
         self.coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
