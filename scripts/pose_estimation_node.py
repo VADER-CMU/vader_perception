@@ -24,7 +24,7 @@ class FruitDetectionNode:
 
         self.peduncle_position = None
 
-        segmentation_models = {
+        self.segmentation_models = {
             "fruit": {
                 "model_path": rospy.get_param('fruit_weights_path'), 
                 "drive_url": rospy.get_param('fruit_drive_url'),
@@ -37,8 +37,8 @@ class FruitDetectionNode:
             }
         }
 
-        self.FruitSeg = Segmentation(segmentation_models["fruit"]) 
-        self.PeduncleSeg = Segmentation(segmentation_models["peduncle"]) 
+        self.FruitSeg = Segmentation(self.segmentation_models["fruit"]) 
+        self.PeduncleSeg = Segmentation(self.segmentation_models["peduncle"]) 
 
         self.coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
         self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
@@ -94,14 +94,14 @@ class FruitDetectionNode:
             if self.latest_depth is not None and self.latest_image is not None:
                 # print(self.latest_image.shape)
 
-                fruit_results = self.FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=self.pepper_confidence, verbose=False)
+                fruit_results = self.FruitSeg.infer(self.latest_image[:, 104:744, :], confidence=self.segmentation_models["fruit"]["confidence"], verbose=False)
 
 
                 # Pepper priority policy here
                 fruit_result = fruit_results[0]
                 fruit_masks = fruit_result.masks
 
-                peduncle_results = self.PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=self.peduncle_confidence, verbose=False)
+                peduncle_results = self.PeduncleSeg.infer(self.latest_image[:, 104:744, :], confidence=self.segmentation_models["peduncle"]["confidence"], verbose=False)
 
 
                 # Pepper priority policy here
