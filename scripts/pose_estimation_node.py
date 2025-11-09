@@ -2,13 +2,13 @@
 
 import rospy
 from sensor_msgs.msg import PointCloud2, Image, CameraInfo
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseArray
 from vader_msgs.msg import Pepper
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from pose_estimation import PoseEstimation, Segmentation, SequentialSegmentation
-from msg_utils import wait_for_camera_info, pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd
+from msg_utils import wait_for_camera_info, pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd, pack_debug_pose_array_message
 
 class FruitDetectionNode:
     def __init__(self):
@@ -18,29 +18,41 @@ class FruitDetectionNode:
         self.latest_depth = None
         self.latest_image = None
         
-        self.pose_dict = {}
+        self.pose_dict_array = []
+
+        # Pose dict structure
+        # pose_dict = {
+        #     "fruit_position": fruit_center,
+        #     "fruit_quaternion": quaternion,
+        #     "fruit_pcd": fruit_pcd,
+        #     "peduncle_position": peduncle_center,
+        #     "peduncle_quaternion": peduncle_quaternion,
+        #     "peduncle_pcd": peduncle_pcd
+        # }
 
         self.segmentation_models = {
             "fruit": {
                 "model_path": rospy.get_param('fruit_weights_path'), 
                 "drive_url": rospy.get_param('fruit_drive_url'),
-                "confidence": rospy.get_param('fruit_confidence', 0.8)
+                "confidence": rospy.get_param('fruit_confidence')
             },
             "peduncle": {
                 "model_path": rospy.get_param('peduncle_weights_path'), 
                 "drive_url": rospy.get_param('peduncle_drive_url'),
-                "confidence": rospy.get_param('peduncle_confidence', 0.8)
+                "confidence": rospy.get_param('peduncle_confidence')
             }
         }
 
         self.Segmentation = SequentialSegmentation(self.segmentation_models)
 
-        self.coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
-        self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
+        # self.coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
+        # self.fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
 
-        self.debug_fine_pose_pub = rospy.Publisher('debug_fine_pose', PoseStamped, queue_size=10)
-        self.debug_fruit_pcd_pub = rospy.Publisher('debug_fruit_pcd', PointCloud2, queue_size=10)
-        self.debug_peduncle_pcd_pub = rospy.Publisher('debug_peduncle_pcd', PointCloud2, queue_size=10)
+        # self.debug_fine_pose_pub = rospy.Publisher('debug_fine_pose', PoseStamped, queue_size=10)
+        # self.debug_fruit_pcd_pub = rospy.Publisher('debug_fruit_pcd', PointCloud2, queue_size=10)
+        # self.debug_peduncle_pcd_pub = rospy.Publisher('debug_peduncle_pcd', PointCloud2, queue_size=10)
+
+        self.debug_pose_array_pub = rospy.Publisher('debug_pose_array', PoseArray, queue_size=10)
 
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
@@ -64,8 +76,6 @@ class FruitDetectionNode:
 
     
     def image_callback(self, msg):
-
-        
         self.bridge = CvBridge()
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -78,7 +88,7 @@ class FruitDetectionNode:
     
     def process_data_and_publish(self):
 
-        intrinsics = wait_for_camera_info(self.camera_info_topic, timeout=5.0)
+        intrinsics = wait_for_camera_info(self.camera_info_topic, timeout=10.0)
         if intrinsics is None:
             rospy.logerr("Failed to get camera intrinsics. Check the camera.")
         self.PoseEst = PoseEstimation(intrinsics)
@@ -89,38 +99,17 @@ class FruitDetectionNode:
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
 
+                # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
                 results = self.Segmentation.infer(self.latest_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    self.pose_dict = self.PoseEst.pose_estimation(self.latest_image, self.latest_depth, result)
+                    pose_dict = self.PoseEst.pose_estimation(self.latest_image, self.latest_depth, result)
+                    self.pose_dict_array.append(pose_dict)
 
+                debug_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, frame_id=self.cam_frame_id)
 
-                if "fruit_position" in self.pose_dict:
-
-                    # Do we have orientation? If so, we have fine pose estimation
-                    if "peduncle_position" in self.pose_dict:
-                        # Publish on fine pose topic
-                        fine_pose_msg = pack_pepper_message(position=self.pose_dict["fruit_position"], quaternion=self.pose_dict["fruit_quaternion"], peduncle_position=self.pose_dict["peduncle_position"], frame_id=self.cam_frame_id)
-                        self.fine_pose_publisher.publish(fine_pose_msg)
-
-                        debug_pcd_msg = pack_debug_pcd(self.pose_dict["peduncle_pcd"], frame_id=self.cam_frame_id)
-                        self.debug_peduncle_pcd_pub.publish(debug_pcd_msg)
-
-                    coarse_pose_msg = pack_pepper_message(position=self.pose_dict["fruit_position"], quaternion=self.pose_dict["fruit_quaternion"], peduncle_position=None, frame_id=self.cam_frame_id)
-                    self.coarse_pose_publisher.publish(coarse_pose_msg)
-                    # Publish on debug topic
-                    debug_pose_msg = pack_debug_fruit_message(position=self.pose_dict["fruit_position"], quaternion=self.pose_dict["fruit_quaternion"], frame_id=self.cam_frame_id)
-                    self.debug_fine_pose_pub.publish(debug_pose_msg)
-                    debug_pcd_msg = pack_debug_pcd(self.pose_dict["fruit_pcd"], frame_id=self.cam_frame_id)
-                    self.debug_fruit_pcd_pub.publish(debug_pcd_msg)
-
-                    # Compute the "up" orientation based on the robot base frame
-                    up_orientation  = [0, 0, 0, 1]  # To be changed
-
-                    coarse_pose_msg = pack_pepper_message(position=self.pose_dict["fruit_position"], quaternion=up_orientation, frame_id=self.cam_frame_id)
-                    self.coarse_pose_publisher.publish(coarse_pose_msg)
-                
-                self.pose_dict = {}
+                self.debug_pose_array_pub.publish(debug_pose_array_msg)
+                self.pose_dict_array = []
 
             
             self.rate.sleep()
