@@ -178,7 +178,7 @@ def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth
                     pepper.peduncle_data.pose.orientation.w = ped_quat[3]
 
             else:
-                # TODO: Publish NaN if no quaternion is found for fine pose
+                # TODO: Set frame id = 
                 continue
 
         else:
@@ -195,6 +195,113 @@ def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth
         pepper_array.peppers.append(pepper)
 
     return pepper_array
+
+
+def pack_ordered_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth_optical_frame"):
+    """
+    Packs the pepper into a PepperArray message.
+    Args:
+        pose_dict_array (list): List of dictionaries containing pose information.
+        fine (bool): Whether to include peduncle data.
+        frame_id (str): The frame ID for the message.
+    Returns:
+        PepperArray: A PepperArray message containing the pepper poses.
+    """
+    coarse_pepper_array = PepperArray()
+    coarse_pepper_array.header.stamp = rospy.Time.now()
+    coarse_pepper_array.header.frame_id = frame_id
+
+    fine_pepper_array = PepperArray()
+    fine_pepper_array.header.stamp = rospy.Time.now()
+    fine_pepper_array.header.frame_id = frame_id
+
+    for pose_dict in pose_dict_array:
+        if "fruit_position" not in pose_dict:
+            continue
+
+        coarse_pepper = Pepper()
+        coarse_pepper.header.stamp = rospy.Time.now()
+        coarse_pepper.header.frame_id = frame_id 
+        
+        position = pose_dict['fruit_position']
+        coarse_pepper.fruit_data.pose.position.x = position[0]
+        coarse_pepper.fruit_data.pose.position.y = position[1]
+        coarse_pepper.fruit_data.pose.position.z = position[2]
+
+        fine_pepper = Pepper()
+        fine_pepper.header.stamp = rospy.Time.now()
+        ###################################################### Here frame id is not set for fine pepper
+        position = pose_dict['fruit_position']
+        fine_pepper.fruit_data.pose.position.x = position[0]
+        fine_pepper.fruit_data.pose.position.y = position[1]
+        fine_pepper.fruit_data.pose.position.z = position[2]
+
+        if fine:
+            if "fruit_quaternion" in pose_dict:
+                quaternion = pose_dict['fruit_quaternion']
+                coarse_pepper.fruit_data.pose.orientation.x = quaternion[0]
+                coarse_pepper.fruit_data.pose.orientation.y = quaternion[1]
+                coarse_pepper.fruit_data.pose.orientation.z = quaternion[2]
+                coarse_pepper.fruit_data.pose.orientation.w = quaternion[3]
+
+                fine_pepper.fruit_data.pose.orientation.x = quaternion[0]
+                fine_pepper.fruit_data.pose.orientation.y = quaternion[1]
+                fine_pepper.fruit_data.pose.orientation.z = quaternion[2]
+                fine_pepper.fruit_data.pose.orientation.w = quaternion[3]
+
+                if "peduncle_position" in pose_dict:
+                    ped_pos = pose_dict['peduncle_position']
+                    coarse_pepper.peduncle_data.pose.position.x = ped_pos[0]
+                    coarse_pepper.peduncle_data.pose.position.y = ped_pos[1]
+                    coarse_pepper.peduncle_data.pose.position.z = ped_pos[2]
+                    
+                    fine_pepper.peduncle_data.pose.position.x = ped_pos[0]
+                    fine_pepper.peduncle_data.pose.position.y = ped_pos[1]
+                    fine_pepper.peduncle_data.pose.position.z = ped_pos[2]
+
+                if "peduncle_quaternion" in pose_dict:
+                    ped_quat = pose_dict['peduncle_quaternion']
+                    coarse_pepper.peduncle_data.pose.orientation.x = ped_quat[0]
+                    coarse_pepper.peduncle_data.pose.orientation.y = ped_quat[1]
+                    coarse_pepper.peduncle_data.pose.orientation.z = ped_quat[2]
+                    coarse_pepper.peduncle_data.pose.orientation.w = ped_quat[3]
+
+                    fine_pepper.peduncle_data.pose.orientation.x = ped_quat[0]
+                    fine_pepper.peduncle_data.pose.orientation.y = ped_quat[1]
+                    fine_pepper.peduncle_data.pose.orientation.z = ped_quat[2]
+                    fine_pepper.peduncle_data.pose.orientation.w = ped_quat[3]
+
+                fine_pepper.header.frame_id = frame_id
+
+            else:
+                # NOTE: frame_id set to = "" 
+                continue
+
+        else:
+            quaternion = np.array([0, 0, 0, 1])
+            coarse_pepper.fruit_data.pose.orientation.x = quaternion[0]
+            coarse_pepper.fruit_data.pose.orientation.y = quaternion[1]
+            coarse_pepper.fruit_data.pose.orientation.z = quaternion[2]
+            coarse_pepper.fruit_data.pose.orientation.w = quaternion[3]
+
+            fine_pepper.fruit_data.pose.orientation.x = quaternion[0]
+            fine_pepper.fruit_data.pose.orientation.y = quaternion[1]
+            fine_pepper.fruit_data.pose.orientation.z = quaternion[2]
+            fine_pepper.fruit_data.pose.orientation.w = quaternion[3]
+
+        coarse_pepper.fruit_data.shape.type = 3 #cylinder
+        coarse_pepper.fruit_data.shape.dimensions = [0.1, 0.075]
+        coarse_pepper.peduncle_data.shape.type = 3 #cylinder
+        coarse_pepper.peduncle_data.shape.dimensions = [0.02, 0.002]
+        coarse_pepper_array.peppers.append(coarse_pepper)
+
+        fine_pepper.fruit_data.shape.type = 3 #cylinder
+        fine_pepper.fruit_data.shape.dimensions = [0.1, 0.075]
+        fine_pepper.peduncle_data.shape.type = 3 #cylinder
+        fine_pepper.peduncle_data.shape.dimensions = [0.02, 0.002]
+        fine_pepper_array.peppers.append(fine_pepper)
+
+    return coarse_pepper_array, fine_pepper_array
 
 
 def pack_debug_pcd(fruit_pcd: open3d.geometry.PointCloud, frame_id="camera_depth_optical_frame"):

@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from pose_estimation import PoseEstimation, SequentialSegmentation
-from msg_utils import wait_for_camera_info, pack_debug_pose_array_message, pack_pepper_array_message
+from msg_utils import wait_for_camera_info, pack_debug_pose_array_message, pack_pepper_array_message, pack_ordered_pepper_array_message
 
 class FruitDetectionNode:
     def __init__(self):
@@ -116,11 +116,13 @@ class FruitDetectionNode:
                 debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
                 self.debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
 
-                coarse_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
-                self.coarse_pepper_array_pub.publish(coarse_pepper_array_msg)
+                # coarse_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
 
-                fine_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                # fine_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                coarse_pepper_array_msg, fine_pepper_array_msg = pack_ordered_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                self.coarse_pepper_array_pub.publish(coarse_pepper_array_msg)
                 self.fine_pepper_array_pub.publish(fine_pepper_array_msg)
+
 
                 self.pose_dict_array = []
 
