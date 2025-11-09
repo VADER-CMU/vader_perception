@@ -52,7 +52,9 @@ class FruitDetectionNode:
         # self.debug_fruit_pcd_pub = rospy.Publisher('debug_fruit_pcd', PointCloud2, queue_size=10)
         # self.debug_peduncle_pcd_pub = rospy.Publisher('debug_peduncle_pcd', PointCloud2, queue_size=10)
 
-        self.debug_pose_array_pub = rospy.Publisher('debug_pose_array', PoseArray, queue_size=10)
+        self.debug_coarse_pose_array_pub = rospy.Publisher('debug_coarse_pose_array', PoseArray, queue_size=10)
+        self.debug_fine_pose_array_pub = rospy.Publisher('debug_fine_pose_array', PoseArray, queue_size=10)
+
         self.coarse_pepper_array_pub = rospy.Publisher('coarse_pepper_array', PepperArray, queue_size=10)
         self.fine_pepper_array_pub = rospy.Publisher('fine_pepper_array', PepperArray, queue_size=10)
 
@@ -108,8 +110,11 @@ class FruitDetectionNode:
                     pose_dict = self.PoseEst.pose_estimation(self.latest_image, self.latest_depth, result)
                     self.pose_dict_array.append(pose_dict)
 
-                debug_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, frame_id=self.cam_frame_id)
-                self.debug_pose_array_pub.publish(debug_pose_array_msg)
+                debug_fine_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                self.debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
+
+                debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
+                self.debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
 
                 coarse_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
                 self.coarse_pepper_array_pub.publish(coarse_pepper_array_msg)

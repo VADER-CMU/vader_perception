@@ -124,6 +124,51 @@ def pack_debug_pose_array_message(pose_dict_array, frame_id="camera_depth_optica
 
     return debug_fine_pose_array_msg
 
+def pack_debug_pose_array_message(pose_dict_array, fine=True, frame_id="camera_depth_optical_frame"):
+    """
+    Packs the pepper into a PepperArray message.
+    Args:
+        pose_dict_array (list): List of dictionaries containing pose information.
+        fine (bool): Whether to include peduncle data.
+        frame_id (str): The frame ID for the message.
+    Returns:
+        PepperArray: A PepperArray message containing the pepper poses.
+    """
+    debug_pose_array_msg = PoseArray()
+
+    # Set header information
+    debug_pose_array_msg.header.stamp = rospy.Time.now()
+    debug_pose_array_msg.header.frame_id = frame_id
+
+    for pose_dict in pose_dict_array:
+        if "fruit_position" not in pose_dict:
+            continue
+
+        pose = Pose()
+        pose.position.x = pose_dict['fruit_position'][0]
+        pose.position.y = pose_dict['fruit_position'][1]
+        pose.position.z = pose_dict['fruit_position'][2]
+
+        if fine and "fruit_quaternion" in pose_dict:
+            quaternion = pose_dict['fruit_quaternion']
+            pose.orientation.x = quaternion[0]
+            pose.orientation.y = quaternion[1]
+            pose.orientation.z = quaternion[2]
+            pose.orientation.w = quaternion[3]
+
+        elif fine and "fruit_quaternion" not in pose_dict:
+            continue
+        else:
+            quaternion = np.array([0, 0, 0, 1])
+            pose.orientation.x = quaternion[0]
+            pose.orientation.y = quaternion[1]
+            pose.orientation.z = quaternion[2]
+            pose.orientation.w = quaternion[3]
+
+        debug_pose_array_msg.peppers.append(pose)
+
+    return debug_pose_array_msg
+
 def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth_optical_frame"):
     """
     Packs the pepper into a PepperArray message.
