@@ -20,10 +20,6 @@ class FruitDetectionNode:
         
         self.pose_dict = {}
 
-        self.fruit_pcd = None
-
-        self.peduncle_position = None
-
         self.segmentation_models = {
             "fruit": {
                 "model_path": rospy.get_param('fruit_weights_path'), 
@@ -36,9 +32,6 @@ class FruitDetectionNode:
                 "confidence": rospy.get_param('peduncle_confidence', 0.8)
             }
         }
-
-        # self.FruitSeg = Segmentation(self.segmentation_models["fruit"]) 
-        # self.PeduncleSeg = Segmentation(self.segmentation_models["peduncle"]) 
 
         self.Segmentation = SequentialSegmentation(self.segmentation_models)
 
@@ -90,13 +83,11 @@ class FruitDetectionNode:
             rospy.logerr("Failed to get camera intrinsics. Check the camera.")
         self.PoseEst = PoseEstimation(intrinsics)
 
-        peduncle_images_path = "/home/kshitij/Documents/Bell Pepper/vader_docker/docker_ws/catkin_ws/src/vader_perception/peduncle_imgs"
         # Main processing loop
         while not rospy.is_shutdown():
 
             # Check if we have received both messages
             if self.latest_depth is not None and self.latest_image is not None:
-                # print(self.latest_image.shape)
 
                 results = self.Segmentation.infer(self.latest_image, coarse_only=False, verbose=False)
 
@@ -123,14 +114,13 @@ class FruitDetectionNode:
                     debug_pcd_msg = pack_debug_pcd(self.pose_dict["fruit_pcd"], frame_id=self.cam_frame_id)
                     self.debug_fruit_pcd_pub.publish(debug_pcd_msg)
 
-                    # Set orientation to None again to avoid publishing old data
-                    self.peduncle_position = None
-
                     # Compute the "up" orientation based on the robot base frame
                     up_orientation  = [0, 0, 0, 1]  # To be changed
 
                     coarse_pose_msg = pack_pepper_message(position=self.pose_dict["fruit_position"], quaternion=up_orientation, frame_id=self.cam_frame_id)
                     self.coarse_pose_publisher.publish(coarse_pose_msg)
+                
+                self.pose_dict = {}
 
             
             self.rate.sleep()
