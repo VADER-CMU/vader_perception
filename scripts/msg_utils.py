@@ -178,7 +178,6 @@ def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth
                     pepper.peduncle_data.pose.orientation.w = ped_quat[3]
 
             else:
-                # TODO: Set frame id = 
                 continue
 
         else:
@@ -230,7 +229,8 @@ def pack_ordered_pepper_array_message(pose_dict_array, fine=True, frame_id="came
 
         fine_pepper = Pepper()
         fine_pepper.header.stamp = rospy.Time.now()
-        ###################################################### Here frame id is not set for fine pepper
+        # Here frame id is not set for fine pepper
+        # It is set only if peduncle is detected and fine pose is available
         position = pose_dict['fruit_position']
         fine_pepper.fruit_data.pose.position.x = position[0]
         fine_pepper.fruit_data.pose.position.y = position[1]

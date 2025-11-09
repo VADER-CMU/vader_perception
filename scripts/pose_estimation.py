@@ -211,6 +211,83 @@ class SequentialSegmentation:
             self.model[task] = YOLO(weights_path)
             self.model[task].to(self.device)
 
+    def predict_combined_masks(self, rgb_image, confidence=0.8, verbose=True):
+        """
+        Splits a wide image, runs batch inference, combines the masks,
+        and then separates each combined object into its own mask and box
+        Args:
+            rgb_image (np.ndarray): The input RGB image.
+            confidence (float, optional): Confidence threshold for detections. Defaults to 0.8.
+            verbose (bool, optional): Whether to print verbose output. Defaults to True.
+        Returns:
+            list: A list of dictionaries, each containing 'mask' and 'box' for detected objects.
+        """
+        
+        # Get original image dimensions
+        H, W, _ = rgb_image.shape  # (480, 848, 3)
+
+        # 1. Split left and right images
+        left_image = rgb_image[:, :640, :]    # (480, 640, 3)
+        right_image = rgb_image[:, -640:, :]  # (480, 640, 3)
+
+        # 2. Run batch inference
+        results = self.model([left_image, right_image], conf=confidence, verbose=verbose)
+        fruit_results_left, fruit_results_right = results[0], results[1]
+
+        # 3. Create a single, full-size mask canvas
+        combined_mask_canvas = np.zeros((H, W), dtype=np.uint8)
+
+        # 4. Process and "OR" all masks from the LEFT image
+        if fruit_results_left.masks is not None:
+            masks_left = fruit_results_left.masks.data.cpu().numpy().astype(np.uint8)
+            if masks_left.shape[0] > 0:
+                # Combine all left masks into one by taking the max
+                combined_left_mask = np.max(masks_left, axis=0)
+                # Place this on the left side of the canvas
+                combined_mask_canvas[:, :640] = combined_left_mask
+
+        # 5. Process and "OR" all masks from the RIGHT image
+        if fruit_results_right.masks is not None:
+            masks_right = fruit_results_right.masks.data.cpu().numpy().astype(np.uint8)
+            if masks_right.shape[0] > 0:
+                # Combine all right masks into one
+                combined_right_mask = np.max(masks_right, axis=0)
+                
+                # Use bitwise_or to merge the right mask with the canvas's overlapping region
+                combined_mask_canvas[:, -640:] = np.bitwise_or(
+                    combined_mask_canvas[:, -640:],
+                    combined_right_mask
+                )
+
+        # --- NEW LOGIC ---
+        
+        # 6. Find contours of all distinct objects in the combined canvas
+        # cv2.RETR_EXTERNAL finds only the outermost contours
+        contours, _ = cv2.findContours(combined_mask_canvas, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        object_list = []
+
+        # 7. Iterate over each found contour (each object)
+        for contour in contours:
+            # Create an empty canvas for this single object
+            individual_mask = np.zeros((H, W), dtype=np.uint8)
+            
+            # Draw the filled contour on the new mask (color=1 for binary)
+            cv2.drawContours(individual_mask, [contour], -1, color=1, thickness=cv2.FILLED)
+            
+            # 8. Get the axis-aligned bounding box from the contour
+            x, y, w, h = cv2.boundingRect(contour)
+            box = np.array([x, y, x + w, y + h])  # Format: [x1, y1, x2, y2]
+            
+            # Add the individual mask and its box to the list
+            object_list.append({
+                "mask": individual_mask,
+                "box": box
+            })
+                
+        return object_list
+
+
     def infer(self, rgb_image, coarse_only=True, verbose=True):
         """
         Runs the inference on a single image
