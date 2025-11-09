@@ -75,7 +75,7 @@ class PoseEstimation:
         # print(quaternion)
         return position, quaternion, peduncle_center, fruit_pcd
     
-    def pose_estimation(self, rgb_image, depth_image, masks, fine_pose=True):
+    def pose_estimation(self, rgb_image, depth_image, masks):
         """
         Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -86,7 +86,7 @@ class PoseEstimation:
                  peduncle_center (np.ndarray): Center of the peduncle in the camera frame
         """
         pose = np.eye(4)
-        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit"], pose)
+        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
         fruit_center = fruit_pcd.get_center()
         quaternion = [0,0,0,1]
 
@@ -98,8 +98,8 @@ class PoseEstimation:
 
 
 
-        if fine_pose:
-            peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle"], pose)
+        if "peduncle_mask" in masks:
+            peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
             peduncle_center = peduncle_pcd.get_center()
 
 
@@ -115,6 +115,7 @@ class PoseEstimation:
             quaternion = r.as_quat()  # [x, y, z, w]
 
             result["peduncle_position"] = peduncle_center
+            result["fruit_quaternion"] = quaternion
             result["peduncle_quaternion"] = quaternion
             result["peduncle_pcd"] = peduncle_pcd
 
@@ -210,7 +211,7 @@ class SequentialSegmentation:
             self.model[task] = YOLO(weights_path)
             self.model[task].to(self.device)
 
-    def infer_fruit_peduncle(self, rgb_image, coarse_only=True, verbose=True):
+    def infer(self, rgb_image, coarse_only=True, verbose=True):
         """
         Runs the inference on a single image
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -226,39 +227,41 @@ class SequentialSegmentation:
 
         height, width, _ = rgb_image.shape
 
-        boxes = detections.boxes.xyxy.cpu().numpy()
-        masks = detections.masks.data.cpu().numpy()
+        if detections.masks is not None:
 
-        for (box, mask) in zip(boxes, masks):
-            mask_dict = {}
-            mask_dict["fruit"] = np.pad(mask.astype(np.uint16), ((0, 0), (104, 104)), mode='constant', constant_values=0)
+            boxes = detections.boxes.xyxy.cpu().numpy()
+            masks = detections.masks.data.cpu().numpy()
 
-            if not coarse_only:
-                # Get bounding box coordinates (xmin, ymin, xmax, ymax) as integers
-                x1, y1, x2, y2 = map(int, box[:4])
-                max_size = max(x2-x1, y2-y1)
+            for (box, mask) in zip(boxes, masks):
+                mask_dict = {}
+                mask_dict["fruit_mask"] = np.pad(mask.astype(np.uint16), ((0, 0), (104, 104)), mode='constant', constant_values=0)
 
-                roi_y_min = max(0, (y1 - max_size//2).astype(np.int32))
-                roi_y_max = min(height, (y2 + max_size//2).astype(np.int32))
-                roi_x_min = max(0, (x1 - max_size//2).astype(np.int32))
-                roi_x_max = min(width, (x2 + max_size//2).astype(np.int32))
+                if not coarse_only:
+                    # Get bounding box coordinates (xmin, ymin, xmax, ymax) as integers
+                    x1, y1, x2, y2 = box[:4]
+                    max_size = max(x2-x1, y2-y1)
 
-                cropped_image = rgb_image[roi_y_min:roi_y_max, roi_x_min:roi_x_max, :]
+                    roi_y_min = max(0, (y1 - max_size//2).astype(np.int32))
+                    roi_y_max = min(height, (y2 + max_size//2).astype(np.int32))
+                    roi_x_min = max(0, (x1 - max_size//2).astype(np.int32))
+                    roi_x_max = min(width, (x2 + max_size//2).astype(np.int32))
 
-                cropped_image = (cv2.resize(cropped_image, (self.peduncle_img_size, self.peduncle_img_size))*255).astype(np.uint8)
-                peduncle_results = self.model["peduncle"].predict(cropped_image, conf=self.confidence["peduncle"], verbose=verbose)
+                    cropped_image = rgb_image[roi_y_min:roi_y_max, roi_x_min:roi_x_max, :]
 
-                peduncle_on_original = np.zeros((height, width), dtype=np.uint8)
-                # get the highest confidence peduncle detection
-                peduncle_detections = peduncle_results[0]
-                if len(peduncle_detections.boxes) > 0:
-                    best_peduncle_idx = np.argmax(peduncle_detections.boxes.conf.cpu().numpy())
-                    best_peduncle_mask = peduncle_detections.masks.data[best_peduncle_idx].cpu().numpy().astype(np.uint8)
-                    # Resize the mask back to the original cropped image size
-                    best_peduncle_mask_resized = cv2.resize(best_peduncle_mask, (roi_x_max - roi_x_min, roi_y_max - roi_y_min), interpolation=cv2.INTER_NEAREST)
-                    peduncle_on_original[roi_y_min:roi_y_max, roi_x_min:roi_x_max] = best_peduncle_mask_resized
+                    cropped_image = cv2.resize(cropped_image, (self.peduncle_img_size, self.peduncle_img_size))
+                    peduncle_results = self.model["peduncle"].predict(cropped_image, conf=self.confidence["peduncle"], verbose=verbose)
 
-                mask_dict["peduncle"] = np.pad(peduncle_on_original.astype(np.uint16), ((0, 0), (104, 104)), mode='constant', constant_values=0)
-            masks_dicts.append(mask_dict)
+                    peduncle_on_original = np.zeros((height, width), dtype=np.uint8)
+                    # get the highest confidence peduncle detection
+                    peduncle_detections = peduncle_results[0]
+                    if peduncle_detections.masks is not None:
+                        # best_peduncle_idx = np.argmax(peduncle_detections.boxes.conf.cpu().numpy())
+                        best_peduncle_mask = peduncle_detections.masks.data[0].cpu().numpy().astype(np.uint8)
+                        # Resize the mask back to the original cropped image size
+                        best_peduncle_mask_resized = cv2.resize(best_peduncle_mask, (roi_x_max - roi_x_min, roi_y_max - roi_y_min), interpolation=cv2.INTER_NEAREST)
+                        peduncle_on_original[roi_y_min:roi_y_max, roi_x_min:roi_x_max] = best_peduncle_mask_resized
+
+                        mask_dict["peduncle_mask"] = np.pad(peduncle_on_original.astype(np.uint16), ((0, 0), (104, 104)), mode='constant', constant_values=0)
+                masks_dicts.append(mask_dict)
 
         return masks_dicts

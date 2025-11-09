@@ -34,10 +34,10 @@
   <arg name="pkg_path" value="$(find vader_perception)" />
   
   <!-- Then set the weights_path parameter with the resolved path -->
-  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/orientation2.pt" />
-  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=1jgSxQraHAupce1RNkpaMzL7MUVqtjHZG" />
-  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle_2.pt" />
-  <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1PVYVIw1jzbX4jpGHCnGwGPXbqa2IcJJv" />
+  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/fruit.pt" />
+  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=1NxZJamK4m9ba1k67vGCFOqA-DMo1QIyR" />
+  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle.pt" />
+  <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1s2f56Wwm9Cy0P0Oj5mSOd_Re7h5PyQ_I" />
   
   
   <!-- Start the fruit detection node -->
