@@ -126,7 +126,7 @@ def pack_debug_pose_array_message(pose_dict_array, fine=True, frame_id="camera_d
             pose.orientation.z = quaternion[2]
             pose.orientation.w = quaternion[3]
 
-        debug_pose_array_msg.append(pose)
+        debug_pose_array_msg.poses.append(pose)
 
     return debug_pose_array_msg
 
