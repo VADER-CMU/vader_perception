@@ -126,7 +126,7 @@ def pack_debug_pose_array_message(pose_dict_array, fine=True, frame_id="camera_d
             pose.orientation.z = quaternion[2]
             pose.orientation.w = quaternion[3]
 
-        debug_pose_array_msg.peppers.append(pose)
+        debug_pose_array_msg.append(pose)
 
     return debug_pose_array_msg
 
@@ -156,28 +156,31 @@ def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth
         pepper.fruit_data.pose.position.y = position[1]
         pepper.fruit_data.pose.position.z = position[2]
 
-        if fine and "fruit_quaternion" in pose_dict:
-            quaternion = pose_dict['fruit_quaternion']
-            pepper.fruit_data.pose.orientation.x = quaternion[0]
-            pepper.fruit_data.pose.orientation.y = quaternion[1]
-            pepper.fruit_data.pose.orientation.z = quaternion[2]
-            pepper.fruit_data.pose.orientation.w = quaternion[3]
+        if fine:
+            if "fruit_quaternion" in pose_dict:
+                quaternion = pose_dict['fruit_quaternion']
+                pepper.fruit_data.pose.orientation.x = quaternion[0]
+                pepper.fruit_data.pose.orientation.y = quaternion[1]
+                pepper.fruit_data.pose.orientation.z = quaternion[2]
+                pepper.fruit_data.pose.orientation.w = quaternion[3]
 
-            if "peduncle_position" in pose_dict:
-                ped_pos = pose_dict['peduncle_position']
-                pepper.peduncle_data.pose.position.x = ped_pos[0]
-                pepper.peduncle_data.pose.position.y = ped_pos[1]
-                pepper.peduncle_data.pose.position.z = ped_pos[2]
+                if "peduncle_position" in pose_dict:
+                    ped_pos = pose_dict['peduncle_position']
+                    pepper.peduncle_data.pose.position.x = ped_pos[0]
+                    pepper.peduncle_data.pose.position.y = ped_pos[1]
+                    pepper.peduncle_data.pose.position.z = ped_pos[2]
 
-            if "peduncle_quaternion" in pose_dict:
-                ped_quat = pose_dict['peduncle_quaternion']
-                pepper.peduncle_data.pose.orientation.x = ped_quat[0]
-                pepper.peduncle_data.pose.orientation.y = ped_quat[1]
-                pepper.peduncle_data.pose.orientation.z = ped_quat[2]
-                pepper.peduncle_data.pose.orientation.w = ped_quat[3]
+                if "peduncle_quaternion" in pose_dict:
+                    ped_quat = pose_dict['peduncle_quaternion']
+                    pepper.peduncle_data.pose.orientation.x = ped_quat[0]
+                    pepper.peduncle_data.pose.orientation.y = ped_quat[1]
+                    pepper.peduncle_data.pose.orientation.z = ped_quat[2]
+                    pepper.peduncle_data.pose.orientation.w = ped_quat[3]
 
-        elif fine and "fruit_quaternion" not in pose_dict:
-            continue
+            else:
+                # TODO: Publish NaN if no quaternion is found for fine pose
+                continue
+
         else:
             quaternion = np.array([0, 0, 0, 1])
             pepper.fruit_data.pose.orientation.x = quaternion[0]
