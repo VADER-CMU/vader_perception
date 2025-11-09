@@ -143,6 +143,8 @@ def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth
             continue
 
         pepper = Pepper()
+        pepper.header.stamp = rospy.Time.now()
+        pepper.header.frame_id = frame_id
         position = pose_dict['fruit_position']
         pepper.fruit_data.pose.position.x = position[0]
         pepper.fruit_data.pose.position.y = position[1]
@@ -177,7 +179,11 @@ def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth
             pepper.fruit_data.pose.orientation.z = quaternion[2]
             pepper.fruit_data.pose.orientation.w = quaternion[3]
 
-        pepper_array.poses.append(pepper)
+        pepper.fruit_data.shape.type = 3 #cylinder
+        pepper.fruit_data.shape.dimensions = [0.1, 0.075]
+        pepper.peduncle_data.shape.type = 3 #cylinder
+        pepper.peduncle_data.shape.dimensions = [0.02, 0.002]
+        pepper_array.peppers.append(pepper)
 
     return pepper_array
 
