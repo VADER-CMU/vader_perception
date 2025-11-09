@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 import rospy
-from sensor_msgs.msg import PointCloud2, Image, CameraInfo
-from geometry_msgs.msg import PoseStamped, PoseArray
-from vader_msgs.msg import Pepper, PepperArray
+from sensor_msgs.msg import Image
+from geometry_msgs.msg import PoseArray
+from vader_msgs.msg import PepperArray
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
-from pose_estimation import PoseEstimation, Segmentation, SequentialSegmentation
-from msg_utils import wait_for_camera_info, pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd, pack_debug_pose_array_message, pack_pepper_array_message
+from pose_estimation import PoseEstimation, SequentialSegmentation
+from msg_utils import wait_for_camera_info, pack_debug_pose_array_message, pack_pepper_array_message
 
 class FruitDetectionNode:
     def __init__(self):
