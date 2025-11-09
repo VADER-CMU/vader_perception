@@ -85,45 +85,6 @@ def pack_debug_fruit_message(position, quaternion=None, frame_id="camera_depth_o
 
     return debug_fine_pose_msg
 
-def pack_debug_pose_array_message(pose_dict_array, frame_id="camera_depth_optical_frame"):
-    """
-    Packs the fruit into a PoseArray message.
-    Args:
-        position (np.ndarray): Position of the fruit in the camera frame.
-        quaternion (np.ndarray): Orientation of the fruit in the camera frame.
-    Returns:
-        PoseArray: A PoseArray message containing the fruit pose.
-    """
-    debug_fine_pose_array_msg = PoseArray()
-
-    # Set header information
-    debug_fine_pose_array_msg.header.stamp = rospy.Time.now()
-    debug_fine_pose_array_msg.header.frame_id = frame_id
-
-    for pose_dict in pose_dict_array:
-
-        if "fruit_position" in pose_dict:
-            pose = Pose()
-            pose.position.x = pose_dict['fruit_position'][0]
-            pose.position.y = pose_dict['fruit_position'][1]
-            pose.position.z = pose_dict['fruit_position'][2]
-
-            if "fruit_quaternion" in pose_dict:
-                # Default orientation (identity quaternion)
-                quaternion = pose_dict['fruit_quaternion']
-            else:
-                quaternion = np.array([0, 0, 0, 1])
-
-            # Set orientation (identity quaternion in this example)
-            pose.orientation.x = quaternion[0]
-            pose.orientation.y = quaternion[1]
-            pose.orientation.z = quaternion[2]
-            pose.orientation.w = quaternion[3]
-
-            debug_fine_pose_array_msg.poses.append(pose)
-
-    return debug_fine_pose_array_msg
-
 def pack_debug_pose_array_message(pose_dict_array, fine=True, frame_id="camera_depth_optical_frame"):
     """
     Packs the pepper into a PepperArray message.
