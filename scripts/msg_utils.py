@@ -2,7 +2,7 @@ import rospy
 import numpy as np
 import open3d
 from geometry_msgs.msg import Pose, PoseStamped, PoseArray
-from vader_msgs.msg import Pepper
+from vader_msgs.msg import Pepper, PepperArray
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2, CameraInfo
 
@@ -123,6 +123,64 @@ def pack_debug_pose_array_message(pose_dict_array, frame_id="camera_depth_optica
             debug_fine_pose_array_msg.poses.append(pose)
 
     return debug_fine_pose_array_msg
+
+def pack_pepper_array_message(pose_dict_array, fine=True, frame_id="camera_depth_optical_frame"):
+    """
+    Packs the pepper into a PepperArray message.
+    Args:
+        pose_dict_array (list): List of dictionaries containing pose information.
+        fine (bool): Whether to include peduncle data.
+        frame_id (str): The frame ID for the message.
+    Returns:
+        PepperArray: A PepperArray message containing the pepper poses.
+    """
+    pepper_array = PepperArray()
+    pepper_array.header.stamp = rospy.Time.now()
+    pepper_array.header.frame_id = frame_id
+
+    for pose_dict in pose_dict_array:
+        if "fruit_position" not in pose_dict:
+            continue
+
+        pepper = Pepper()
+        position = pose_dict['fruit_position']
+        pepper.fruit_data.pose.position.x = position[0]
+        pepper.fruit_data.pose.position.y = position[1]
+        pepper.fruit_data.pose.position.z = position[2]
+
+        if fine and "fruit_quaternion" in pose_dict:
+            quaternion = pose_dict['fruit_quaternion']
+            pepper.fruit_data.pose.orientation.x = quaternion[0]
+            pepper.fruit_data.pose.orientation.y = quaternion[1]
+            pepper.fruit_data.pose.orientation.z = quaternion[2]
+            pepper.fruit_data.pose.orientation.w = quaternion[3]
+
+            if "peduncle_position" in pose_dict:
+                ped_pos = pose_dict['peduncle_position']
+                pepper.peduncle_data.pose.position.x = ped_pos[0]
+                pepper.peduncle_data.pose.position.y = ped_pos[1]
+                pepper.peduncle_data.pose.position.z = ped_pos[2]
+
+            if "peduncle_quaternion" in pose_dict:
+                ped_quat = pose_dict['peduncle_quaternion']
+                pepper.peduncle_data.pose.orientation.x = ped_quat[0]
+                pepper.peduncle_data.pose.orientation.y = ped_quat[1]
+                pepper.peduncle_data.pose.orientation.z = ped_quat[2]
+                pepper.peduncle_data.pose.orientation.w = ped_quat[3]
+
+        elif fine and "fruit_quaternion" not in pose_dict:
+            continue
+        else:
+            quaternion = np.array([0, 0, 0, 1])
+            pepper.fruit_data.pose.orientation.x = quaternion[0]
+            pepper.fruit_data.pose.orientation.y = quaternion[1]
+            pepper.fruit_data.pose.orientation.z = quaternion[2]
+            pepper.fruit_data.pose.orientation.w = quaternion[3]
+
+        pepper_array.poses.append(pepper)
+
+    return pepper_array
+
 
 def pack_debug_pcd(fruit_pcd: open3d.geometry.PointCloud, frame_id="camera_depth_optical_frame"):
     """

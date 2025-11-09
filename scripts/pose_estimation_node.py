@@ -3,7 +3,7 @@
 import rospy
 from sensor_msgs.msg import PointCloud2, Image, CameraInfo
 from geometry_msgs.msg import PoseStamped, PoseArray
-from vader_msgs.msg import Pepper
+from vader_msgs.msg import Pepper, PepperArray
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
@@ -53,6 +53,8 @@ class FruitDetectionNode:
         # self.debug_peduncle_pcd_pub = rospy.Publisher('debug_peduncle_pcd', PointCloud2, queue_size=10)
 
         self.debug_pose_array_pub = rospy.Publisher('debug_pose_array', PoseArray, queue_size=10)
+        self.coarse_pepper_array_pub = rospy.Publisher('coarse_pepper_array', PepperArray, queue_size=10)
+        self.fine_pepper_array_pub = rospy.Publisher('fine_pepper_array', PepperArray, queue_size=10)
 
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
@@ -107,8 +109,14 @@ class FruitDetectionNode:
                     self.pose_dict_array.append(pose_dict)
 
                 debug_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, frame_id=self.cam_frame_id)
-
                 self.debug_pose_array_pub.publish(debug_pose_array_msg)
+
+                coarse_pepper_array_msg = pack_pepper_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
+                self.coarse_pepper_array_pub.publish(coarse_pepper_array_msg)
+
+                fine_pepper_array_msg = pack_pepper_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                self.fine_pepper_array_pub.publish(fine_pepper_array_msg)
+
                 self.pose_dict_array = []
 
             
