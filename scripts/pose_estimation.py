@@ -211,11 +211,13 @@ class SequentialSegmentation:
             self.model[task] = YOLO(weights_path)
             self.model[task].to(self.device)
 
-    def predict_combined_masks(self, rgb_image, confidence=0.8, verbose=True):
+    @staticmethod
+    def predict_combined_masks(model, rgb_image, confidence=0.8, verbose=True):
         """
         Splits a wide image, runs batch inference, combines the masks,
         and then separates each combined object into its own mask and box
         Args:
+            model: The segmentation model to use for inference.
             rgb_image (np.ndarray): The input RGB image.
             confidence (float, optional): Confidence threshold for detections. Defaults to 0.8.
             verbose (bool, optional): Whether to print verbose output. Defaults to True.
@@ -231,7 +233,7 @@ class SequentialSegmentation:
         right_image = rgb_image[:, -640:, :]  # (480, 640, 3)
 
         # 2. Run batch inference
-        results = self.model([left_image, right_image], conf=confidence, verbose=verbose)
+        results = model([left_image, right_image], conf=confidence, verbose=verbose)
         fruit_results_left, fruit_results_right = results[0], results[1]
 
         # 3. Create a single, full-size mask canvas
