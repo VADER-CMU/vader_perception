@@ -77,14 +77,15 @@ class FruitDetectionNode:
         self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=10)
         self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=10)
 
+        # cutter publishers
         self.cutter_debug_coarse_pose_array_pub = rospy.Publisher('cutter_debug_coarse_pose_array', PoseArray, queue_size=10)
-        self.cutter_debug_fine_pose_array_pub = rospy.Publisher('cutter_debug_fine_pose_array', PoseArray, queue_size=10)
+        # No fine pose for cutter camera
 
         self.cutter_coarse_pepper_array_pub = rospy.Publisher('cutter_coarse_pepper_array', PepperArray, queue_size=10)
-        self.cutter_fine_pepper_array_pub = rospy.Publisher('cutter_fine_pepper_array', PepperArray, queue_size=10)
+        # No fine pose for cutter camera
 
 
-
+        # Subscribers
         rospy.Subscriber(
             "/gripper_cam/depth/image_rect_raw", 
             Image, 
@@ -172,10 +173,10 @@ class FruitDetectionNode:
                     self.gripper_pose_dict_array.append(pose_dict)
 
                 debug_fine_pose_array_msg = pack_debug_pose_array_message(self.gripper_pose_dict_array, fine=True, frame_id=self.gripper_cam_frame_id)
-                self.debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
+                self.gripper_debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
 
                 debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.gripper_pose_dict_array, fine=False, frame_id=self.gripper_cam_frame_id)
-                self.debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
+                self.gripper_debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
 
                 # coarse_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
 
@@ -188,6 +189,25 @@ class FruitDetectionNode:
                 self.gripper_pose_dict_array = []
             
             if self.cutter_depth is not None and self.cutter_image is not None:
+
+
+                # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
+                results = self.Segmentation.infer_large_fov(self.cutter_image, coarse_only=True, verbose=False)
+
+                for result in results:
+                    pose_dict = self.cutter_pose_estimator.pose_estimation(self.cutter_image, self.cutter_depth, result)
+                    self.cutter_pose_dict_array.append(pose_dict)
+
+                debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.cutter_pose_dict_array, fine=False, frame_id=self.cutter_cam_frame_id)
+                self.cutter_debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
+
+                coarse_pepper_array_msg = pack_pepper_array_message(self.cutter_pose_dict_array, fine=False, frame_id=self.cutter_cam_frame_id)
+
+                # fine_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                self.cutter_coarse_pepper_array_pub.publish(coarse_pepper_array_msg)
+
+
+                self.cutter_pose_dict_array = []
 
                 raise NotImplementedError("Cutter camera processing not implemented yet.")
 
