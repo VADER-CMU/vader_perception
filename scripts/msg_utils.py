@@ -110,16 +110,16 @@ def pack_debug_pose_array_message(pose_dict_array, fine=True, frame_id="camera_d
         pose.position.y = pose_dict['fruit_position'][1]
         pose.position.z = pose_dict['fruit_position'][2]
 
-        if fine and "fruit_quaternion" in pose_dict:
+        if fine and "peduncle_position" in pose_dict:
             quaternion = pose_dict['fruit_quaternion']
             pose.orientation.x = quaternion[0]
             pose.orientation.y = quaternion[1]
             pose.orientation.z = quaternion[2]
             pose.orientation.w = quaternion[3]
 
-        elif fine and "fruit_quaternion" not in pose_dict:
+        elif fine and "peduncle_position" not in pose_dict:
             continue
-        else:
+        if not fine:
             quaternion = np.array([0, 0, 0, 1])
             pose.orientation.x = quaternion[0]
             pose.orientation.y = quaternion[1]

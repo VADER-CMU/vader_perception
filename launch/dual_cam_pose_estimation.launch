@@ -40,8 +40,8 @@
   <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1s2f56Wwm9Cy0P0Oj5mSOd_Re7h5PyQ_I" />
 
     <!-- Segmentation Confidence -->
-  <param name="fruit_confidence" value="0.85" />
-  <param name="peduncle_confidence" value="0.2" />
+  <param name="fruit_confidence" value="0.8" />
+  <param name="peduncle_confidence" value="0.2" /> ,                                                                                                                                                                                                                                                                                     
   
   
   <!-- Start the fruit detection node -->
@@ -49,6 +49,6 @@
   </node>
 
    <!-- Launch RViz with custom configuration -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/dual_cam.rviz" />
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/dual_cam.rviz" /> -->
 </launch>
 

@@ -74,8 +74,8 @@ class PoseEstimation:
         
         # print(quaternion)
         return position, quaternion, peduncle_center, fruit_pcd
-    
-    def pose_estimation(self, rgb_image, depth_image, masks):
+
+    def pose_estimation(self, rgb_image, depth_image, masks, offset=np.array([0,0,0])):
         """
         Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -88,6 +88,9 @@ class PoseEstimation:
         pose = np.eye(4)
         fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
         fruit_center = fruit_pcd.get_center()
+
+        offset = offset[:3]  # Ensure offset is 3D
+        fruit_center += offset
         quaternion = [0,0,0,1]
 
         result = {

@@ -1,0 +1,22 @@
+<launch>
+  <arg name="GRIPPER_CAM_SERIAL" value="128422272240" />
+  <arg name="CUTTER_CAM_SERIAL" value="130322272760" />
+
+  <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+    <!-- RealSense camera configuration parameters -->
+    <arg name="enable_pointcloud" value="false" />
+    <arg name="serial_no" value="$(arg CUTTER_CAM_SERIAL)" />
+    <arg name="align_depth" value="true" />
+    <arg name="color_width" value="848" />
+    <arg name="color_height" value="480" />
+    <arg name="color_fps" value="30" />
+    <arg name="depth_width" value="848" />
+    <arg name="depth_height" value="480" />
+    <arg name="depth_fps" value="30" /> 
+  </include>
+  <arg name="pkg_path" value="$(find vader_perception)" />
+  
+   <!-- Launch RViz with custom configuration -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/teleop_cam.rviz" />
+</launch>
+
