@@ -2,14 +2,15 @@
 
 import rospy
 from sensor_msgs.msg import PointCloud2, Image
-from geometry_msgs.msg import PoseStamped
-from vader_msgs.msg import Pepper
+from geometry_msgs.msg import PoseArray
+from vader_msgs.msg import PepperArray
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 import sensor_msgs.point_cloud2 as pc2
-from pose_estimation import PoseEstimation, Segmentation
+from pose_estimation import PoseEstimation, SequentialSegmentation
 from msg_utils import pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd
+from msg_utils import wait_for_camera_info, pack_debug_pose_array_message, pack_pepper_array_message, pack_ordered_pepper_array_message
 
 class FruitDetectionNode:
     def __init__(self):
@@ -18,48 +19,71 @@ class FruitDetectionNode:
 
         self.gripper_depth = None
         self.gripper_image = None
-        self.gripper_position_estimate = None
-        self.gripper_quaternion_estimate = None
-        self.gripper_peduncle_position = None
 
         self.cutter_depth = None
         self.cutter_image = None
-        self.cutter_position_estimate = None
-        self.cutter_quaternion_estimate = None
 
-        self.gripper_fruit_pcd = None
-        self.cutter_fruit_pcd = None
+        # Pose dict structure
+        # pose_dict = {
+        #     "fruit_position": fruit_center,
+        #     "fruit_quaternion": quaternion,
+        #     "fruit_pcd": fruit_pcd,
+        #     "peduncle_position": peduncle_center,
+        #     "peduncle_quaternion": peduncle_quaternion,
+        #     "peduncle_pcd": peduncle_pcd
+        # }
+        self.gripper_pose_dict_array = []
+        self.cutter_pose_dict_array = []
+
 
         self.gripper_cam_frame_id = "gripper_cam_depth_optical_frame"
         self.cutter_cam_frame_id = "cutter_cam_depth_optical_frame"
 
 
-        fruit_model = {
-            "model_path": rospy.get_param('fruit_weights_path'), 
-            "drive_url": rospy.get_param('fruit_drive_url')
-        }
-        peduncle_model = {
-            "model_path": rospy.get_param('peduncle_weights_path'), 
-            "drive_url": rospy.get_param('peduncle_drive_url')
+        self.segmentation_models = {
+            "fruit": {
+                "model_path": rospy.get_param('fruit_weights_path'), 
+                "drive_url": rospy.get_param('fruit_drive_url'),
+                "confidence": rospy.get_param('fruit_confidence')
+            },
+            "peduncle": {
+                "model_path": rospy.get_param('peduncle_weights_path'), 
+                "drive_url": rospy.get_param('peduncle_drive_url'),
+                "confidence": rospy.get_param('peduncle_confidence')
+            }
         }
 
-        self.FruitSeg = Segmentation(fruit_model) 
-        self.PeduncleSeg = Segmentation(peduncle_model) 
+        self.Segmentation = SequentialSegmentation(self.segmentation_models)
 
-        self.pepper_confidence = rospy.get_param('pepper_confidence', 0.8)
-        self.peduncle_confidence = rospy.get_param('peduncle_confidence', 0.8)
+        
 
         # gripper publishers
-        self.gripper_coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
-        self.gripper_fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
-        self.debug_gripper_fine_pose_publisher = rospy.Publisher('debug_gripper_fine_pose', PoseStamped, queue_size=10)
-        self.debug_gripper_pcd_pub = rospy.Publisher('debug_gripper_pcd', PointCloud2, queue_size=10)
+        # self.gripper_coarse_pose_publisher = rospy.Publisher('gripper_coarse_pose', Pepper, queue_size=10)
+        # self.gripper_fine_pose_publisher = rospy.Publisher('fruit_fine_pose', Pepper, queue_size=10)
+        # self.debug_gripper_fine_pose_publisher = rospy.Publisher('debug_gripper_fine_pose', PoseStamped, queue_size=10)
+        # self.debug_gripper_pcd_pub = rospy.Publisher('debug_gripper_pcd', PointCloud2, queue_size=10)
 
 
-        # cutter publishers
-        self.cutter_coarse_pose_publisher = rospy.Publisher('cutter_coarse_pose', Pepper, queue_size=10)
-        self.debug_cutter_pose_pub = rospy.Publisher('debug_cutter_pose', PoseStamped, queue_size=10)
-        self.debug_cutter_pcd_pub = rospy.Publisher('debug_cutter_pcd', PointCloud2, queue_size=10)
+        # # cutter publishers
+        # self.cutter_coarse_pose_publisher = rospy.Publisher('cutter_coarse_pose', Pepper, queue_size=10)
+        # self.debug_cutter_pose_pub = rospy.Publisher('debug_cutter_pose', PoseStamped, queue_size=10)
+        # self.debug_cutter_pcd_pub = rospy.Publisher('debug_cutter_pcd', PointCloud2, queue_size=10)
+
+
+        # gripper publishers
+        self.gripper_debug_coarse_pose_array_pub = rospy.Publisher('gripper_debug_coarse_pose_array', PoseArray, queue_size=10)
+        self.gripper_debug_fine_pose_array_pub = rospy.Publisher('gripper_debug_fine_pose_array', PoseArray, queue_size=10)
+
+        self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=10)
+        self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=10)
+
+        self.cutter_debug_coarse_pose_array_pub = rospy.Publisher('cutter_debug_coarse_pose_array', PoseArray, queue_size=10)
+        self.cutter_debug_fine_pose_array_pub = rospy.Publisher('cutter_debug_fine_pose_array', PoseArray, queue_size=10)
+
+        self.cutter_coarse_pepper_array_pub = rospy.Publisher('cutter_coarse_pepper_array', PepperArray, queue_size=10)
+        self.cutter_fine_pepper_array_pub = rospy.Publisher('cutter_fine_pepper_array', PepperArray, queue_size=10)
+
+
 
         rospy.Subscriber(
             "/gripper_cam/depth/image_rect_raw", 
@@ -82,6 +106,12 @@ class FruitDetectionNode:
             Image, 
             lambda msg: self.image_callback(msg, "cutter")
         )
+
+        self.gripper_camera_info_topic = '/gripper_cam/depth/camera_info'
+        self.gripper_cam_frame_id = "gripper_cam_depth_optical_frame"
+
+        self.cutter_camera_info_topic = '/cutter_cam/depth/camera_info'
+        self.cutter_cam_frame_id = "cutter_cam_depth_optical_frame"
 
         self.rate = rospy.Rate(10)
         
@@ -119,103 +149,47 @@ class FruitDetectionNode:
     
     def process_data_and_publish(self):
 
-        PoseEst = PoseEstimation()
+        gripper_intrinsics = wait_for_camera_info(self.gripper_camera_info_topic, timeout=10.0)
+        if gripper_intrinsics is None:
+            rospy.logerr("Failed to get gripper camera intrinsics. Check the camera.")
+        self.gripper_pose_estimator = PoseEstimation(gripper_intrinsics)
+
+        cutter_intrinsics = wait_for_camera_info(self.cutter_camera_info_topic, timeout=10.0)
+        if cutter_intrinsics is None:
+            rospy.logerr("Failed to get cutter camera intrinsics. Check the camera.")
+        self.cutter_pose_estimator = PoseEstimation(cutter_intrinsics)
 
         # Main processing loop
         while not rospy.is_shutdown():
             # Check if we have received both messages
             if self.gripper_depth is not None and self.gripper_image is not None:
 
-                fruit_results = self.FruitSeg.infer(self.gripper_image[:, 104:744, :], confidence=self.pepper_confidence, verbose=False)
+                # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
+                results = self.Segmentation.infer_large_fov(self.gripper_image, coarse_only=False, verbose=False)
+
+                for result in results:
+                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result)
+                    self.gripper_pose_dict_array.append(pose_dict)
+
+                debug_fine_pose_array_msg = pack_debug_pose_array_message(self.gripper_pose_dict_array, fine=True, frame_id=self.gripper_cam_frame_id)
+                self.debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
+
+                debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.gripper_pose_dict_array, fine=False, frame_id=self.gripper_cam_frame_id)
+                self.debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
+
+                # coarse_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=False, frame_id=self.cam_frame_id)
+
+                # fine_pepper_array_msg = pack_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                coarse_pepper_array_msg, fine_pepper_array_msg = pack_ordered_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
+                self.gripper_coarse_pepper_array_pub.publish(coarse_pepper_array_msg)
+                self.gripper_fine_pepper_array_pub.publish(fine_pepper_array_msg)
 
 
-                # Pepper priority policy here
-                fruit_result = fruit_results[0]
-                fruit_masks = fruit_result.masks
-
-                peduncle_results = self.PeduncleSeg.infer(self.gripper_image[:, 104:744, :], confidence=self.peduncle_confidence, verbose=False)
-
-
-                # Pepper priority policy here
-                peduncle_result = peduncle_results[0]
-                peduncle_masks = peduncle_result.masks
-
-                
-
-                if not fruit_masks is None and not peduncle_masks is None:
-                    fruit_mask = fruit_masks.data[0].cpu().numpy().astype('uint16')
-                    fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
-
-                    peduncle_mask = peduncle_masks.data[0].cpu().numpy().astype('uint16')
-                    peduncle_mask = np.pad(peduncle_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
-
-                    kernel = np.ones((5, 5), np.uint8)
-                    # peduncle_mask = cv2.erode(peduncle_mask, kernel, iterations=3)
-                    
-
-                    self.gripper_position_estimate, self.gripper_quaternion_estimate, self.gripper_peduncle_position, self.gripper_fruit_pcd = PoseEst.fine_fruit_pose_estimation(self.gripper_image, self.gripper_depth, fruit_mask, peduncle_mask)
-
-                elif not fruit_masks is None:
-                    # print("Number of detected masks: ", len(fruit_result.masks.data))
-                    # print(fruit_masks.data.shape)
-                    fruit_mask = fruit_masks.data[0].cpu().numpy().astype('uint16')
-                    fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
-                    
-
-                    self.gripper_position_estimate, self.gripper_quaternion_estimate, self.gripper_fruit_pcd = PoseEst.coarse_fruit_pose_estimation(self.gripper_image, self.gripper_depth, fruit_mask)
-
-                if self.gripper_position_estimate is not None:
-
-                    # Do we have orientation? If so, we have fine pose estimation
-                    if self.gripper_peduncle_position is not None:
-                        # Publish on fine pose topic
-                        fine_pose_msg = pack_pepper_message(position=self.gripper_position_estimate, quaternion=self.gripper_quaternion_estimate, peduncle_position=self.gripper_peduncle_position, frame_id=self.gripper_cam_frame_id)
-                        self.gripper_fine_pose_publisher.publish(fine_pose_msg)
-
-
-                    coarse_pose_msg = pack_pepper_message(position=self.gripper_position_estimate, quaternion=self.gripper_quaternion_estimate, peduncle_position=self.gripper_peduncle_position, frame_id=self.gripper_cam_frame_id)
-                    self.gripper_coarse_pose_publisher.publish(coarse_pose_msg)
-                    # Publish on debug topic
-                    debug_pose_msg = pack_debug_fruit_message(position=self.gripper_position_estimate, quaternion=self.gripper_quaternion_estimate, frame_id=self.gripper_cam_frame_id)
-                    self.debug_gripper_fine_pose_publisher.publish(debug_pose_msg)
-                    debug_pcd_msg = pack_debug_pcd(self.gripper_fruit_pcd, frame_id=self.gripper_cam_frame_id)
-                    self.debug_gripper_pcd_pub.publish(debug_pcd_msg)
-
-                    # Set orientation to None again to avoid publishing old data
-                    self.gripper_peduncle_position = None
-
-                    # Compute the "up" orientation based on the robot base frame
-                    up_orientation = [0, 0, 0, 1]  # To be changed
-
-                    coarse_pose_msg = pack_pepper_message(position=self.gripper_position_estimate, quaternion=up_orientation, frame_id=self.gripper_cam_frame_id)
-                    self.gripper_coarse_pose_publisher.publish(coarse_pose_msg)
+                self.gripper_pose_dict_array = []
             
             if self.cutter_depth is not None and self.cutter_image is not None:
 
-                fruit_results = self.FruitSeg.infer(self.cutter_image[:, 104:744, :], confidence=self.pepper_confidence, verbose=False)
-
-                # Pepper priority policy here
-                fruit_result = fruit_results[0]
-                fruit_masks = fruit_result.masks
-
-                if not fruit_masks is None:
-                    fruit_mask = fruit_masks.data[0].cpu().numpy().astype('uint16')
-                    fruit_mask = np.pad(fruit_mask, ((0, 0), (104, 104)), mode='constant', constant_values=0)
-                    self.cutter_position_estimate, self.cutter_quaternion_estimate, self.cutter_fruit_pcd = PoseEst.coarse_fruit_pose_estimation(self.cutter_image, self.cutter_depth, fruit_mask)
-
-                if self.cutter_position_estimate is not None:
-
-                    # Publish on debug topic
-                    debug_pose_msg = pack_debug_fruit_message(position=self.cutter_position_estimate, quaternion=None, frame_id=self.cutter_cam_frame_id)
-                    self.debug_cutter_pose_pub.publish(debug_pose_msg)
-                    debug_pcd_msg = pack_debug_pcd(self.cutter_fruit_pcd, frame_id=self.cutter_cam_frame_id)
-                    self.debug_cutter_pcd_pub.publish(debug_pcd_msg)
-
-                    # Compute the "up" orientation based on the robot base frame
-                    up_orientation  = [0, 0, 0, 1]  # To be changed
-
-                    coarse_pose_msg = pack_pepper_message(position=self.cutter_position_estimate, quaternion=up_orientation, frame_id=self.cutter_cam_frame_id)
-                    self.cutter_coarse_pose_publisher.publish(coarse_pose_msg)
+                raise NotImplementedError("Cutter camera processing not implemented yet.")
 
             
             self.rate.sleep()
