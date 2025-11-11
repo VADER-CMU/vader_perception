@@ -344,3 +344,54 @@ class SequentialSegmentation:
                 masks_dicts.append(mask_dict)
 
         return masks_dicts
+    
+    def infer_large_fov(self, rgb_image, coarse_only=True, verbose=True):
+        """
+        Runs the inference on a single image
+        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
+              coarse_only (bool): If True, only fruit segmentation is performed
+        Returns: results (list): List of results containing fruit and peduncle masks (if coarse_only is False)
+        """
+        masks_dicts = []
+
+        height, width, _ = rgb_image.shape
+        fruit_result_dicts = self.predict_combined_masks(self.model["fruit"], rgb_image, confidence=self.confidence["fruit"], verbose=verbose)
+
+
+        if len(fruit_result_dicts) > 0:
+
+            for fruit_result in fruit_result_dicts:
+                box = fruit_result["box"]
+                mask = fruit_result["mask"]
+                mask_dict = {}
+                mask_dict["fruit_mask"] = mask.astype(np.uint16)
+
+                if not coarse_only:
+                    # Get bounding box coordinates (xmin, ymin, xmax, ymax) as integers
+                    x1, y1, x2, y2 = box[:4]
+                    max_size = max(x2-x1, y2-y1)
+
+                    roi_y_min = max(0, (y1 - max_size//2).astype(np.int32))
+                    roi_y_max = min(height, (y2 + max_size//2).astype(np.int32))
+                    roi_x_min = max(0, (x1 - max_size//2).astype(np.int32))
+                    roi_x_max = min(width, (x2 + max_size//2).astype(np.int32))
+
+                    cropped_image = rgb_image[roi_y_min:roi_y_max, roi_x_min:roi_x_max, :]
+
+                    cropped_image = cv2.resize(cropped_image, (self.peduncle_img_size, self.peduncle_img_size))
+                    peduncle_results = self.model["peduncle"].predict(cropped_image, conf=self.confidence["peduncle"], verbose=verbose)
+
+                    peduncle_on_original = np.zeros((height, width), dtype=np.uint8)
+                    # get the highest confidence peduncle detection
+                    peduncle_detections = peduncle_results[0]
+                    if peduncle_detections.masks is not None:
+                        # best_peduncle_idx = np.argmax(peduncle_detections.boxes.conf.cpu().numpy())
+                        best_peduncle_mask = peduncle_detections.masks.data[0].cpu().numpy().astype(np.uint8)
+                        # Resize the mask back to the original cropped image size
+                        best_peduncle_mask_resized = cv2.resize(best_peduncle_mask, (roi_x_max - roi_x_min, roi_y_max - roi_y_min), interpolation=cv2.INTER_NEAREST)
+                        peduncle_on_original[roi_y_min:roi_y_max, roi_x_min:roi_x_max] = best_peduncle_mask_resized
+
+                        mask_dict["peduncle_mask"] = peduncle_on_original.astype(np.uint16)
+                masks_dicts.append(mask_dict)
+
+        return masks_dicts

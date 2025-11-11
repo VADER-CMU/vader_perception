@@ -104,7 +104,7 @@ class FruitDetectionNode:
             if self.latest_depth is not None and self.latest_image is not None:
 
                 # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
-                results = self.Segmentation.infer(self.latest_image, coarse_only=False, verbose=False)
+                results = self.Segmentation.infer_large_fov(self.latest_image, coarse_only=False, verbose=False)
 
                 for result in results:
                     pose_dict = self.PoseEst.pose_estimation(self.latest_image, self.latest_depth, result)
