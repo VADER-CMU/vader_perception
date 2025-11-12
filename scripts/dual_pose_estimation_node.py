@@ -167,7 +167,7 @@ class FruitDetectionNode:
             if self.gripper_depth is not None and self.gripper_image is not None:
 
                 # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
-                results = self.Segmentation.infer_large_fov(self.gripper_image, coarse_only=False, verbose=False)
+                results = self.Segmentation.infer(self.gripper_image, coarse_only=False, verbose=False)
 
                 for result in results:
                     pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result, offset=np.array([0,0,0.045]))

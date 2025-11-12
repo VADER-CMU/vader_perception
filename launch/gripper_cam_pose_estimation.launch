@@ -5,7 +5,7 @@
   <include file="$(find realsense2_camera)/launch/rs_camera.launch">
     <!-- RealSense camera configuration parameters -->
     <arg name="serial_no" value="$(arg GRIPPER_CAM_SERIAL)" />
-    <arg name="enable_pointcloud" value="false" />
+    <arg name="enable_pointcloud" value="true" />
     <arg name="align_depth" value="true" />
     <arg name="color_width" value="848" />
     <arg name="color_height" value="480" />
@@ -25,7 +25,7 @@
   
   <!-- Segmentation Confidence -->
   <param name="fruit_confidence" value="0.85" />
-  <param name="peduncle_confidence" value="0.99" />
+  <param name="peduncle_confidence" value="0.2" />
 
   <!-- Start the fruit detection node -->
   <node name="pose_estimation" pkg="vader_perception" type="pose_estimation_node.py" output="screen">
