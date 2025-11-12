@@ -205,6 +205,8 @@ class SequentialSegmentation:
         self.confidence = {}
         self.peduncle_img_size = 640
 
+        self.crop_fraction = 0.6
+
         for task in {"fruit", "peduncle"}:
             weights_path = segmentation_models[task]["model_path"]
             drive_url = segmentation_models[task]["drive_url"]
@@ -323,7 +325,7 @@ class SequentialSegmentation:
                 if not coarse_only:
                     # Get bounding box coordinates (xmin, ymin, xmax, ymax) as integers
                     x1, y1, x2, y2 = box[:4]
-                    max_size = max(x2-x1, y2-y1)
+                    max_size = max(x2-x1, y2-y1) * self.crop_fraction
 
                     roi_y_min = max(0, (y1 - max_size//2).astype(np.int32))
                     roi_y_max = min(height, (y2 + max_size//2).astype(np.int32))
