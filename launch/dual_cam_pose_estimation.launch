@@ -6,7 +6,7 @@
   <include file="$(find realsense2_camera)/launch/rs_camera.launch">
     <arg name="camera" value="gripper_cam" />
     <arg name="serial_no" value="$(arg GRIPPER_CAM_SERIAL)" />
-    <arg name="enable_pointcloud" value="true" />
+    <arg name="enable_pointcloud" value="false" />
     <arg name="align_depth" value="true" />
     <arg name="color_width" value="848" />
     <arg name="color_height" value="480" />
@@ -49,6 +49,6 @@
   </node>
 
    <!-- Launch RViz with custom configuration -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/dual_cam.rviz" />
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/dual_cam.rviz" /> -->
 </launch>
 
