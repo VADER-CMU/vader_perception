@@ -106,7 +106,8 @@ class PoseEstimation:
             peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
 
             peduncle_points_numpy = np.asarray(peduncle_pcd.points)
-            peduncle_center = np.median(peduncle_points_numpy, axis=0)
+            # peduncle_center = np.median(peduncle_points_numpy, axis=0)
+            peduncle_center = np.mean(peduncle_points_numpy, axis=0)
 
             axis_vector = peduncle_center - fruit_center
             a_x = np.cross(axis_vector, fruit_center)

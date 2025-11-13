@@ -2,7 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import PointCloud2, Image
-from geometry_msgs.msg import PoseArray
+from geometry_msgs.msg import PoseArray, Pose
 from vader_msgs.msg import PepperArray
 import cv2
 import numpy as np
@@ -76,6 +76,9 @@ class FruitDetectionNode:
 
         self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=10)
         self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=10)
+
+        self.debug_fruit_center_pose_pub = rospy.Publisher("pepper_center", PoseArray, queue_size=10)
+        self.debug_peduncle_center_pose_pub = rospy.Publisher("peduncle_center", PoseArray, queue_size=10)
 
         # cutter publishers
         self.cutter_debug_coarse_pose_array_pub = rospy.Publisher('cutter_debug_coarse_pose_array', PoseArray, queue_size=10)
@@ -170,8 +173,9 @@ class FruitDetectionNode:
                 results = self.Segmentation.infer(self.gripper_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result, offset=np.array([0,0,0.0]))
+                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result, offset=np.array([0,0,0.02]))
                     self.gripper_pose_dict_array.append(pose_dict)
+                        
 
                 debug_fine_pose_array_msg = pack_debug_pose_array_message(self.gripper_pose_dict_array, fine=True, frame_id=self.gripper_cam_frame_id)
                 self.gripper_debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
@@ -196,7 +200,7 @@ class FruitDetectionNode:
                 results = self.Segmentation.infer(self.cutter_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    pose_dict = self.cutter_pose_estimator.pose_estimation(self.cutter_image, self.cutter_depth, result, offset=np.array([0,0,0.0]))
+                    pose_dict = self.cutter_pose_estimator.pose_estimation(self.cutter_image, self.cutter_depth, result, offset=np.array([0,0,0.02]))
                     self.cutter_pose_dict_array.append(pose_dict)
 
                 debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.cutter_pose_dict_array, fine=False, frame_id=self.cutter_cam_frame_id)
