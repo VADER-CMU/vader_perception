@@ -87,8 +87,7 @@ class PoseEstimation:
         """
         pose = np.eye(4)
         fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
-        fruit_points_numpy = np.asarray(fruit_pcd.points)
-        fruit_center = np.median(fruit_points_numpy, axis=0)
+        fruit_center = fruit_pcd.get_center()
 
         offset = offset[:3]  # Ensure offset is 3D
         fruit_center += offset
@@ -105,8 +104,7 @@ class PoseEstimation:
         if "peduncle_mask" in masks:
             peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
 
-            peduncle_points_numpy = np.asarray(peduncle_pcd.points)
-            peduncle_center = np.median(peduncle_points_numpy, axis=0)
+            peduncle_center = peduncle_pcd.get_center()
 
             axis_vector = peduncle_center - fruit_center
             a_x = np.cross(axis_vector, fruit_center)
@@ -160,9 +158,6 @@ class PoseEstimation:
         frame_pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic, extrinsic)
 
         return frame_pcd
-
-    def get_priority_mask(self, results):
-        pass
 
 class Segmentation:
     def __init__(self, weights_path_url, device='cuda'):
