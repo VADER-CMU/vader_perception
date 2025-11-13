@@ -170,7 +170,7 @@ class FruitDetectionNode:
                 results = self.Segmentation.infer(self.gripper_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result, offset=np.array([0,0,0.045]))
+                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result, offset=np.array([0,0,0.0]))
                     self.gripper_pose_dict_array.append(pose_dict)
 
                 debug_fine_pose_array_msg = pack_debug_pose_array_message(self.gripper_pose_dict_array, fine=True, frame_id=self.gripper_cam_frame_id)
@@ -193,10 +193,10 @@ class FruitDetectionNode:
 
 
                 # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
-                results = self.Segmentation.infer_large_fov(self.cutter_image, coarse_only=True, verbose=False)
+                results = self.Segmentation.infer(self.cutter_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    pose_dict = self.cutter_pose_estimator.pose_estimation(self.cutter_image, self.cutter_depth, result, offset=np.array([0,0,0.045]))
+                    pose_dict = self.cutter_pose_estimator.pose_estimation(self.cutter_image, self.cutter_depth, result, offset=np.array([0,0,0.0]))
                     self.cutter_pose_dict_array.append(pose_dict)
 
                 debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.cutter_pose_dict_array, fine=False, frame_id=self.cutter_cam_frame_id)
