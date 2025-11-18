@@ -34,14 +34,16 @@
   <arg name="pkg_path" value="$(find vader_perception)" />
   
   <!-- Then set the weights_path parameter with the resolved path -->
-  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/fruit.pt" />
-  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=1NxZJamK4m9ba1k67vGCFOqA-DMo1QIyR" />
+  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/fruit_fvd.pt" />
+  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=111ae427vhfLbMKw2TUW5bHy6nxH3DF2E" />
+
+  <!-- fruit.pt https://drive.google.com/uc?id=1NxZJamK4m9ba1k67vGCFOqA-DMo1QIyR -->
   <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle.pt" />
-  <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1s2f56Wwm9Cy0P0Oj5mSOd_Re7h5PyQ_I" />
+  <param name="peduncle_drive_url" value="1s2f56Wwm9Cy0P0Oj5mSOd_Re7h5PyQ_I" />
 
     <!-- Segmentation Confidence -->
-  <param name="fruit_confidence" value="0.8" />
-  <param name="peduncle_confidence" value="0.15" />                                                                                                                                                                                                                                                                                      
+  <param name="fruit_confidence" value="0.7" />
+  <param name="peduncle_confidence" value="0.2" />                                                                                                                                                                                                                                                                                      
   
   
   <!-- Start the fruit detection node -->
@@ -50,5 +52,10 @@
 
    <!-- Launch RViz with custom configuration -->
   <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg pkg_path)/rviz_config/dual_cam.rviz" /> -->
+
+  <!-- Launch UI -->
+  <!-- <node name="robot_ui_node" pkg="vader_perception" type="user_interface.py" output="screen">
+  </node> -->
+
 </launch>
 
