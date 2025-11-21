@@ -2,6 +2,7 @@ import numpy as np
 import open3d as o3d
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation as R
 import gdown
 import pathlib
@@ -23,111 +24,7 @@ class PoseEstimation:
             self.fy = intrinsics.get("fy", self.fy)
             self.cx = intrinsics.get("cx", self.cx)
             self.cy = intrinsics.get("cy", self.cy)
-            
-
-
-    def coarse_fruit_pose_estimation(self, rgb, depth, mask):
-        """
-        Coarse fruit pose estimation gives the position and orientation of the fruit in the camera frame
-        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
-              depth_image (np.ndarray): Depth image of size (640, 480)
-              mask (np.ndarray): A singular mask of a detected target fruit
-        Returns: position (np.ndarray): Position of the fruit in the camera frame
-                 quaternion (np.ndarray): Orientation of the fruit in the camera frame
-        """
-        pose = np.eye(4)
-        pcd = self.rgbd_to_pcd(rgb, depth, mask, pose)
-        center = pcd.get_center()
-        quaternion = None
-        return center, quaternion, pcd
     
-
-    def fine_fruit_pose_estimation(self, rgb_image, depth_image, fruit_mask, peduncle_mask):
-        """
-        Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
-        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
-              depth_image (np.ndarray): Depth image of size (640, 480)
-              mask (np.ndarray): A singular mask of a detected target fruit
-        Returns: position (np.ndarray): Position of the fruit in the camera frame
-                 quaternion (np.ndarray): Orientation of the fruit in the camera frame
-                 peduncle_center (np.ndarray): Center of the peduncle in the camera frame
-        """
-        pose = np.eye(4)
-        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, fruit_mask, pose)
-        fruit_center = fruit_pcd.get_center()
-
-        peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, peduncle_mask, pose)
-        peduncle_center = peduncle_pcd.get_center()
-
-        position = fruit_center
-
-        axis_vector = peduncle_center - fruit_center
-        a_x = np.cross(axis_vector, fruit_center)
-        a_x_hat = a_x/ np.linalg.norm(a_x)
-        a_z = axis_vector #- (np.dot(axis_vector, a_x_hat)*a_x_hat)
-        a_z_hat = a_z/ np.linalg.norm(a_z)
-        a_y_hat = np.cross(a_z_hat, a_x_hat)
-        
-        R_co = np.array([a_x_hat, a_y_hat, a_z_hat]).T
-        r = R.from_matrix(R_co)
-        quaternion = r.as_quat()  # [x, y, z, w]
-        
-        # print(quaternion)
-        return position, quaternion, peduncle_center, fruit_pcd
-
-    def pose_estimation(self, rgb_image, depth_image, masks, offset=np.array([0,0,0])):
-        """
-        Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
-        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
-              depth_image (np.ndarray): Depth image of size (640, 480)
-              mask (np.ndarray): A singular mask of a detected target fruit
-        Returns: position (np.ndarray): Position of the fruit in the camera frame
-                 quaternion (np.ndarray): Orientation of the fruit in the camera frame
-                 peduncle_center (np.ndarray): Center of the peduncle in the camera frame
-        """
-        pose = np.eye(4)
-        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
-        fruit_points_numpy = np.asarray(fruit_pcd.points)
-        fruit_center = np.median(fruit_points_numpy, axis=0)
-
-        offset = offset[:3]  # Ensure offset is 3D
-        fruit_center += offset
-        quaternion = [0,0,0,1]
-
-        result = {
-            "fruit_position": fruit_center,
-            "fruit_quaternion": quaternion,
-            "fruit_pcd": fruit_pcd
-        }
-
-
-
-        if "peduncle_mask" in masks:
-            peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
-
-            peduncle_points_numpy = np.asarray(peduncle_pcd.points)
-            # peduncle_center = np.median(peduncle_points_numpy, axis=0)
-            peduncle_center = np.mean(peduncle_points_numpy, axis=0)
-
-            axis_vector = peduncle_center - fruit_center
-            a_x = np.cross(axis_vector, fruit_center)
-            a_x_hat = a_x/ np.linalg.norm(a_x)
-            a_z = axis_vector #- (np.dot(axis_vector, a_x_hat)*a_x_hat)
-            a_z_hat = a_z/ np.linalg.norm(a_z)
-            a_y_hat = np.cross(a_z_hat, a_x_hat)
-            
-            R_co = np.array([a_x_hat, a_y_hat, a_z_hat]).T
-            r = R.from_matrix(R_co)
-            quaternion = r.as_quat()  # [x, y, z, w]
-
-            result["peduncle_position"] = peduncle_center
-            result["fruit_quaternion"] = quaternion
-            result["peduncle_quaternion"] = quaternion
-            result["peduncle_pcd"] = peduncle_pcd
-
-
-        return result
-
     def rgbd_to_pcd(self, rgb, depth, mask, pose=np.eye(4)):
         """
         Converts RGBD and Mask data to a masked point cloud.
@@ -162,8 +59,319 @@ class PoseEstimation:
 
         return frame_pcd
 
-    def get_priority_mask(self, results):
-        pass
+
+    def _coarse_fruit_pose_estimation(self, rgb, depth, mask):
+        """
+        Coarse fruit pose estimation gives the position and orientation of the fruit in the camera frame
+        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
+              depth_image (np.ndarray): Depth image of size (640, 480)
+              mask (np.ndarray): A singular mask of a detected target fruit
+        Returns: position (np.ndarray): Position of the fruit in the camera frame
+                 quaternion (np.ndarray): Orientation of the fruit in the camera frame
+        """
+        pose = np.eye(4)
+        pcd = self.rgbd_to_pcd(rgb, depth, mask, pose)
+        center = pcd.get_center()
+        quaternion = None
+        return center, quaternion, pcd
+    
+
+    def _fine_fruit_pose_estimation(self, rgb_image, depth_image, fruit_mask, peduncle_mask):
+        """
+        Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
+        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
+              depth_image (np.ndarray): Depth image of size (640, 480)
+              mask (np.ndarray): A singular mask of a detected target fruit
+        Returns: position (np.ndarray): Position of the fruit in the camera frame
+                 quaternion (np.ndarray): Orientation of the fruit in the camera frame
+                 peduncle_center (np.ndarray): Center of the peduncle in the camera frame
+        """
+        pose = np.eye(4)
+        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, fruit_mask, pose)
+        fruit_center = fruit_pcd.get_center()
+
+        peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, peduncle_mask, pose)
+        peduncle_center = peduncle_pcd.get_center()
+
+        position = fruit_center
+
+        axis_vector = peduncle_center - fruit_center
+        a_x = np.cross(axis_vector, fruit_center)
+        a_x_hat = a_x/ np.linalg.norm(a_x)
+        a_z = axis_vector #- (np.dot(axis_vector, a_x_hat)*a_x_hat)
+        a_z_hat = a_z/ np.linalg.norm(a_z)
+        a_y_hat = np.cross(a_z_hat, a_x_hat)
+        
+        R_co = np.array([a_x_hat, a_y_hat, a_z_hat]).T
+        r = R.from_matrix(R_co)
+        quaternion = r.as_quat()  # [x, y, z, w]
+        
+        # print(quaternion)
+        return position, quaternion, peduncle_center, fruit_pcd
+
+    def pose_estimation(self, rgb_image, depth_image, masks, superellipsoid_method=False):
+        """
+        Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
+        Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
+              depth_image (np.ndarray): Depth image of size (640, 480)
+              mask (np.ndarray): A singular mask of a detected target fruit
+        Returns: position (np.ndarray): Position of the fruit in the camera frame
+                 quaternion (np.ndarray): Orientation of the fruit in the camera frame
+                 peduncle_center (np.ndarray): Center of the peduncle in the camera frame
+        """
+        pose = np.eye(4)
+        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
+        fruit_points_numpy = np.asarray(fruit_pcd.points)
+        fruit_center = np.median(fruit_points_numpy, axis=0)
+
+        offset = offset[:3]  # Ensure offset is 3D
+
+        result = {
+            "fruit_position": fruit_center,
+            "fruit_quaternion": quaternion,
+            "fruit_pcd": fruit_pcd
+        }
+
+
+
+        if "peduncle_mask" in masks:
+            peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
+
+            peduncle_points_numpy = np.asarray(peduncle_pcd.points)
+            # peduncle_center = np.median(peduncle_points_numpy, axis=0)
+            peduncle_center = np.mean(peduncle_points_numpy, axis=0)
+
+            axis_vector = peduncle_center - fruit_center
+            a_x = np.cross(axis_vector, fruit_center)
+            a_x_hat = a_x/ np.linalg.norm(a_x)
+            a_z = axis_vector #- (np.dot(axis_vector, a_x_hat)*a_x_hat)
+            a_z_hat = a_z/ np.linalg.norm(a_z)
+            a_y_hat = np.cross(a_z_hat, a_x_hat)
+            
+            R_co = np.array([a_x_hat, a_y_hat, a_z_hat]).T
+            r = R.from_matrix(R_co)
+            quaternion = r.as_quat()  # [x, y, z, w]
+
+            result["peduncle_position"] = peduncle_center
+            result["fruit_quaternion"] = quaternion
+            result["peduncle_quaternion"] = quaternion
+            result["peduncle_pcd"] = peduncle_pcd
+
+
+        return result
+    
+    def _preprocess_pcd_for_superellipsoid(self, rgb_image, depth_image, masks):
+        """
+        Preprocesses the point cloud for superellipsoid fitting.
+        This includes voxel downsampling, outlier removal
+        
+        Args:
+            rgb_image (np.ndarray): RGB image of size (640, 480, 3)
+            depth_image (np.ndarray): Depth image of size (640, 480)
+            masks (dict): Masks for the fruit and peduncle
+
+        Returns:
+            processed_pcd (o3d.geometry.PointCloud): The processed point cloud
+            fruit_pcd (o3d.geometry.PointCloud): The partial point cloud of the pepper.
+            peduncle_pcd (o3d.geometry.PointCloud): The partial point cloud of the peduncle.
+            initial_position (np.ndarray): Initial [x, y, z] estimate.
+            initial_quaternion (np.ndarray): Initial [x, y, z, w] rotation estimate.
+        """
+        pose = np.eye(4)
+        fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
+        peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
+
+        initial_position, initial_quaternion, _, _ = self._fine_fruit_pose_estimation(
+            rgb_image, depth_image, masks["fruit_mask"], masks["peduncle_mask"]
+        )
+        
+
+        # Erode the fruit mask to avoid edge points
+        kernel = np.ones((5,5),np.uint8)
+        processed_mask = cv2.erode(masks["fruit_mask"], kernel, iterations = 3)
+        processed_mask = processed_mask.astype(bool).astype(np.uint8)
+
+        processed_pcd = self.rgbd_to_pcd(rgb_image, depth_image, processed_mask, pose)
+        # Downsample the point cloud and remove outliers
+        processed_pcd = processed_pcd.voxel_down_sample(voxel_size=0.01)
+        processed_pcd = processed_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+
+        return processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion
+
+    def _refine_pose_superellipsoid(self, fruit_pcd, coarse_position, coarse_quaternion, max_iterations=2000):
+        """
+        Fits a superellipsoid to the partial point cloud using the coarse pose as initialization.
+        Uses the Solina cost function for optimization.
+        
+        Args:
+            fruit_pcd (o3d.geometry.PointCloud): The partial point cloud of the pepper.
+            coarse_position (np.ndarray): Initial [x, y, z] estimate.
+            coarse_quaternion (np.ndarray): Initial [x, y, z, w] rotation estimate.
+            
+        Returns:
+            optimized_pose (np.ndarray): 4x4 transformation matrix of the fitted superellipsoid center/orientation.
+            shape_params (dict): Dictionary containing {a, b, c, e1, e2}.
+        """
+        # 1. Prepare Point Cloud Data
+        points_world = np.asarray(fruit_pcd.points)
+        
+        # 2. Initial Guesses (x0)
+        # Shape: bell peppers are roughly cubic/globular. Start with ~4cm radii.
+        # Exponents: Blocky shapes have e < 1. Start with 0.5.
+        a_init, b_init, c_init = 0.04, 0.04, 0.05 
+        e1_init, e2_init = 0.5, 0.5
+        
+        # Pose: Use coarse position and convert quaternion to Rotation Vector for optimization (3 params vs 4)
+        tx, ty, tz = coarse_position
+        r_obj = R.from_quat(coarse_quaternion)
+        rot_vec = r_obj.as_rotvec() # [rx, ry, rz]
+        
+        # x0 vector: [a, b, c, e1, e2, tx, ty, tz, rx, ry, rz]
+        x0 = np.array([a_init, b_init, c_init, e1_init, e2_init, tx, ty, tz, rot_vec[0], rot_vec[1], rot_vec[2]])
+
+        # 3. Bounds (Keep shape positive, exponents within reasonable superquadric range)
+        # a,b,c > 0.01m, 0.1 < e < 1.9 (convex-ish), translation unconstrained-ish
+        lower_bounds = [0.01, 0.01, 0.01, 0.1, 0.1, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf, -np.inf]
+        upper_bounds = [0.15, 0.15, 0.15, 1.9, 1.9, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]
+
+
+        # Priors
+        priors = {
+            'center': coarse_position,
+            'rotation': r_obj,
+            'prior_center_weight': 0.1,
+            'prior_rotation_weight': 0.01,
+            'prior_scaling_weight': 0.5
+        }
+        
+        # 4. Run Optimization
+        res = least_squares(
+            self._super_residuals, 
+            x0, 
+            bounds=(lower_bounds, upper_bounds),
+            args=(points_world, priors),
+            method='trf', # Trust Region Reflective handles bounds well
+            loss='linear', # Standard least squares
+            max_nfev=max_iterations,
+            verbose=2,
+            ftol=1e-16,
+            gtol=1e-16,
+            xtol=1e-15
+        )
+
+        # 5. Extract Results
+        opt_params = res.x
+        a, b, c, e1, e2 = opt_params[0:5]
+        t_opt = opt_params[5:8]
+        r_vec_opt = opt_params[8:11]
+        
+        # 6. Construct Final Pose Matrix
+        final_rot = R.from_rotvec(r_vec_opt)
+        optimized_pose = np.eye(4)
+        optimized_pose[:3, :3] = final_rot.as_matrix()
+        optimized_pose[:3, 3] = t_opt
+
+        optimized_position = t_opt
+        optimized_quaternion = final_rot.as_quat()
+
+        roll, pitch, yaw = final_rot.as_euler('xyz')
+        
+        # shape_params = {"a": a, "b": b, "c": c, "e1": e1, "e2": e2}
+        parameters = {
+            'a': a, 'b': b, 'c': c,
+            'e1': e1, 'e2': e2,
+            'tx': t_opt[0],
+            'ty': t_opt[1],
+            'tz': t_opt[2],
+            'roll': roll,
+            'pitch': pitch,
+            'yaw': yaw,
+            'cost': res.cost,
+            'success': res.success
+        }
+
+        superellipsoid_pcd = self.sample_superellipsoid_surface(parameters, num_samples=1000)
+
+        return optimized_position, optimized_quaternion, parameters, superellipsoid_pcd
+
+    def _super_residuals(self, params, points_world, priors):
+        """
+        Computes the Superellipsoid cost function residuals for the superellipsoid fit.
+        Based on 'superellipsoid.h' implementation.
+        """
+        # Unpack parameters
+        a, b, c, e1, e2 = params[0], params[1], params[2], params[3], params[4]
+        tx, ty, tz = params[5], params[6], params[7]
+        rx, ry, rz = params[8], params[9], params[10]
+
+        prior_center = priors['center']
+        prior_rotation = priors['rotation']
+        prior_center_weight = priors['prior_center_weight']
+        prior_rot_weight = priors['prior_rotation_weight']
+        prior_scaling_weight = priors['prior_scaling_weight']
+        
+        # 1. Transform World Points to Canonical Superellipsoid Frame
+        # Translation
+        p_centered = points_world - np.array([tx, ty, tz])
+        
+        # Rotation (Inverse rotation to align points with canonical axes)
+        # Note: Scipy rotation apply is P_rotated = R * P. We need P_canonical = R_inv * P_centered.
+        # R.inv() corresponds to applying the negative rotation vector.
+        r_obj = R.from_rotvec(np.array([rx, ry, rz]))
+        p_canonical = r_obj.inv().apply(p_centered)
+        
+        x = p_canonical[:, 0]
+        y = p_canonical[:, 1]
+        z = p_canonical[:, 2]
+
+        # 2. Compute Implicit Function F
+        # Equation: ((|x|/a)^(2/e2) + (|y|/b)^(2/e2))^(e2/e1) + (|z|/c)^(2/e1)
+        
+        # Add epsilon to avoid division by zero in gradients if needed, though abs() usually handles it
+        term_x = (np.abs(x) / a) ** (2.0 / e2)
+        term_y = (np.abs(y) / b) ** (2.0 / e2)
+        
+        # f1 corresponds to the implicit surface equation value
+        f1 = (term_x + term_y) ** (e2 / e1) + (np.abs(z) / c) ** (2.0 / e1)
+        
+        # 3. Solina Cost Function
+        # Source: superellipsoid.h -> CostFunctionType::SOLINA
+        # residual = sqrt(a*b*c) * abs(pow(f1, e1/2.) - 1.)
+        
+        # Note: The Solina metric minimizes the radial difference.
+        scale_factor = np.sqrt(a * b * c)
+        
+        # We return the raw residual vector. least_squares will square and sum them.
+        solina_residuals = scale_factor * np.abs(f1**(e1 / 2.0) - 1.0)
+
+        # Regularization terms
+        center_residual = prior_center_weight * np.sqrt(
+            0.001 + (tx - prior_center[0])**2 + 
+            (ty - prior_center[1])**2 + 
+            (tz - prior_center[2])**2
+        )
+
+        scaling_residual = prior_scaling_weight * np.sqrt(
+            0.001 + (a - b)**2 + (b - c)**2 + (c - a)**2
+        )
+        
+        # Rotation regularization
+            
+        prior_z_axis = prior_rotation.as_matrix()[:, 1]  # Z-axis of prior rotation
+        current_rotation = r_obj.inv().as_matrix()[:, 1]  # Z-axis of current rotation
+        rotation_residual = prior_rot_weight * np.sqrt(
+            0.001 + np.sum((current_rotation - prior_z_axis)**2)
+        )
+        print("Rotation Residual:", rotation_residual)
+
+        residuals = np.concatenate([
+            solina_residuals,
+            [center_residual],
+            [scaling_residual],
+            [rotation_residual]
+        ])
+        
+        return residuals
 
 class Segmentation:
     def __init__(self, weights_path_url, device='cuda'):

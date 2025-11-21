@@ -197,7 +197,7 @@ class FruitDetectionNode:
 
 
                 # Structure: results = {"fruit_masks": [], "peduncle_masks": []}
-                results = self.Segmentation.infer(self.cutter_image, coarse_only=False, verbose=False)
+                results = self.Segmentation.infer_large_fov(self.cutter_image, coarse_only=False, verbose=False)
 
                 for result in results:
                     pose_dict = self.cutter_pose_estimator.pose_estimation(self.cutter_image, self.cutter_depth, result, offset=np.array([0,0,0.02]))
