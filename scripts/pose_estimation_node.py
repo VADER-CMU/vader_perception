@@ -107,7 +107,7 @@ class FruitDetectionNode:
                 results = self.Segmentation.infer(self.latest_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    pose_dict = self.PoseEst.pose_estimation(self.latest_image, self.latest_depth, result, offset=np.array([0,0,0.]))
+                    pose_dict = self.PoseEst.pose_estimation(self.latest_image, self.latest_depth, result, superellipsoid_method=True)
                     self.pose_dict_array.append(pose_dict)
 
                 debug_fine_pose_array_msg = pack_debug_pose_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)

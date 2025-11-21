@@ -124,22 +124,24 @@ class PoseEstimation:
 
         offset = [0, 0, -0.04]
 
+
+
         result = {
             "fruit_position": fruit_pcd.get_center() + offset,
-            "fruit_quaternion": quaternion,
+            "fruit_quaternion": [0,0,0,1],
             "fruit_pcd": fruit_pcd
         }
 
         if "peduncle_mask" in masks:
             
-
+            print("Peduncle detected")
             # Bad estimate of the center of the fruit
             refined_fruit_center = fruit_pcd.get_center() + offset
 
             if superellipsoid_method:
                 processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion = \
                     self._preprocess_pcd_for_superellipsoid(rgb_image, depth_image, masks)
-                refined_fruit_center, _, _, _ = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
+                refined_fruit_center, _, _ = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
                 refined_fruit_center = self._verify_superellipsoid_center(initial_position, refined_fruit_center)
 
             peduncle_center = peduncle_pcd.get_center()
@@ -204,17 +206,17 @@ class PoseEstimation:
         processed_pcd = self.rgbd_to_pcd(rgb_image, depth_image, processed_mask, pose)
         # Downsample the point cloud and remove outliers
         processed_pcd = processed_pcd.voxel_down_sample(voxel_size=0.01)
-        processed_pcd = processed_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+        processed_pcd, _ = processed_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
 
         return processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion
 
-    def _refine_pose_superellipsoid(self, fruit_pcd, coarse_position, coarse_quaternion, max_iterations=2000):
+    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=2000):
         """
         Fits a superellipsoid to the partial point cloud using the coarse pose as initialization.
         Uses the Solina cost function for optimization.
         
         Args:
-            fruit_pcd (o3d.geometry.PointCloud): The partial point cloud of the pepper.
+            processed_pcd (o3d.geometry.PointCloud): The partial point cloud of the pepper.
             coarse_position (np.ndarray): Initial [x, y, z] estimate.
             coarse_quaternion (np.ndarray): Initial [x, y, z, w] rotation estimate.
             
@@ -223,7 +225,7 @@ class PoseEstimation:
             shape_params (dict): Dictionary containing {a, b, c, e1, e2}.
         """
         # 1. Prepare Point Cloud Data
-        points_world = np.asarray(fruit_pcd.points)
+        points_world = np.asarray(processed_pcd.points)
         
         # 2. Initial Guesses (x0)
         # Shape: bell peppers are roughly cubic/globular. Start with ~4cm radii.
@@ -263,7 +265,7 @@ class PoseEstimation:
             method='trf', # Trust Region Reflective handles bounds well
             loss='linear', # Standard least squares
             max_nfev=max_iterations,
-            verbose=2,
+            verbose=0,
             ftol=1e-16,
             gtol=1e-16,
             xtol=1e-15
@@ -300,9 +302,8 @@ class PoseEstimation:
             'success': res.success
         }
 
-        superellipsoid_pcd = self.sample_superellipsoid_surface(parameters, num_samples=1000)
 
-        return optimized_position, optimized_quaternion, parameters, superellipsoid_pcd
+        return optimized_position, optimized_quaternion, parameters
 
     def _super_residuals(self, params, points_world, priors):
         """
@@ -372,7 +373,6 @@ class PoseEstimation:
         rotation_residual = prior_rot_weight * np.sqrt(
             0.001 + np.sum((current_rotation - prior_z_axis)**2)
         )
-        print("Rotation Residual:", rotation_residual)
 
         residuals = np.concatenate([
             solina_residuals,

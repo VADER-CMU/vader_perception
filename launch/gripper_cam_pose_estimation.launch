@@ -1,10 +1,13 @@
 <launch>
   <arg name="GRIPPER_CAM_SERIAL" value="128422272240" />
 
+  <arg name="CUTTER_CAM_SERIAL" value="130322272760" />
+
+
   <!-- Launch the RealSense camera -->
   <include file="$(find realsense2_camera)/launch/rs_camera.launch">
     <!-- RealSense camera configuration parameters -->
-    <arg name="serial_no" value="$(arg GRIPPER_CAM_SERIAL)" />
+    <arg name="serial_no" value="$(arg CUTTER_CAM_SERIAL)" />
     <arg name="enable_pointcloud" value="true" />
     <arg name="align_depth" value="true" />
     <arg name="color_width" value="848" />
@@ -25,7 +28,7 @@
   
   <!-- Segmentation Confidence -->
   <param name="fruit_confidence" value="0.85" />
-  <param name="peduncle_confidence" value="0.2" />
+  <param name="peduncle_confidence" value="0.1" />
 
   <!-- Start the fruit detection node -->
   <node name="pose_estimation" pkg="vader_perception" type="pose_estimation_node.py" output="screen">
