@@ -121,28 +121,30 @@ class PoseEstimation:
         """
         pose = np.eye(4)
         fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
-        fruit_points_numpy = np.asarray(fruit_pcd.points)
-        fruit_center = np.median(fruit_points_numpy, axis=0)
 
-        offset = offset[:3]  # Ensure offset is 3D
+        offset = [0, 0, -0.04]
 
         result = {
-            "fruit_position": fruit_center,
+            "fruit_position": fruit_pcd.get_center() + offset,
             "fruit_quaternion": quaternion,
             "fruit_pcd": fruit_pcd
         }
 
-
-
         if "peduncle_mask" in masks:
-            peduncle_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["peduncle_mask"], pose)
+            
 
-            peduncle_points_numpy = np.asarray(peduncle_pcd.points)
-            # peduncle_center = np.median(peduncle_points_numpy, axis=0)
-            peduncle_center = np.mean(peduncle_points_numpy, axis=0)
+            # Bad estimate of the center of the fruit
+            refined_fruit_center = fruit_pcd.get_center() + offset
 
-            axis_vector = peduncle_center - fruit_center
-            a_x = np.cross(axis_vector, fruit_center)
+            if superellipsoid_method:
+                processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion = \
+                    self._preprocess_pcd_for_superellipsoid(rgb_image, depth_image, masks)
+                refined_fruit_center, _, _, _ = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
+                refined_fruit_center = self._verify_superellipsoid_center(initial_position, refined_fruit_center)
+
+            peduncle_center = peduncle_pcd.get_center()
+            axis_vector = peduncle_center - refined_fruit_center
+            a_x = np.cross(axis_vector, refined_fruit_center)
             a_x_hat = a_x/ np.linalg.norm(a_x)
             a_z = axis_vector #- (np.dot(axis_vector, a_x_hat)*a_x_hat)
             a_z_hat = a_z/ np.linalg.norm(a_z)
@@ -160,6 +162,14 @@ class PoseEstimation:
 
         return result
     
+    def _verify_superellipsoid_center(self, initial_position, refined_position):
+
+        if np.linalg.norm(initial_position - refined_position) > 0.1:
+            print("Warning: Superellipsoid center deviated significantly from initial estimate.")
+            return initial_position
+
+        return refined_position
+
     def _preprocess_pcd_for_superellipsoid(self, rgb_image, depth_image, masks):
         """
         Preprocesses the point cloud for superellipsoid fitting.
