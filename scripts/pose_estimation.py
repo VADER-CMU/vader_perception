@@ -144,6 +144,9 @@ class PoseEstimation:
                 refined_fruit_center, _, _ = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
                 refined_fruit_center = self._verify_superellipsoid_center(initial_position, refined_fruit_center)
 
+                if refined_fruit_center is None:
+                    return result
+
             peduncle_center = peduncle_pcd.get_center()
             axis_vector = peduncle_center - refined_fruit_center
             a_x = np.cross(axis_vector, refined_fruit_center)
@@ -169,7 +172,7 @@ class PoseEstimation:
 
         if np.linalg.norm(initial_position - refined_position) > 0.05:
             print("Warning: Superellipsoid center deviated significantly from initial estimate.")
-            return initial_position
+            return None
 
         return refined_position
 
