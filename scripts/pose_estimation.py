@@ -134,14 +134,16 @@ class PoseEstimation:
 
         if "peduncle_mask" in masks:
             
-            # print("Peduncle detected")
+            print("Peduncle detected")
             # Bad estimate of the center of the fruit
             refined_fruit_center = fruit_pcd.get_center() + offset
 
             if superellipsoid_method:
                 processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion = \
                     self._preprocess_pcd_for_superellipsoid(rgb_image, depth_image, masks)
-                refined_fruit_center, _, _, fitted_pcd = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
+                if len(peduncle_pcd.points) == 0:
+                    return result
+                refined_fruit_center, _, _ = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
                 refined_fruit_center = self._verify_superellipsoid_center(initial_position, refined_fruit_center)
 
                 if refined_fruit_center is None:
@@ -171,7 +173,7 @@ class PoseEstimation:
     def _verify_superellipsoid_center(self, initial_position, refined_position):
 
         if np.linalg.norm(initial_position - refined_position) > 0.05:
-            print("Warning: Superellipsoid center deviated significantly from initial estimate.")
+            print("Warning: Superellipsoid center deviated significantly. Fallback to coarse")
             return None
 
         return refined_position
@@ -206,15 +208,19 @@ class PoseEstimation:
         kernel = np.ones((5,5),np.uint8)
         processed_mask = cv2.erode(masks["fruit_mask"], kernel, iterations = 3)
         processed_mask = processed_mask.astype(bool).astype(np.uint8)
-
         processed_pcd = self.rgbd_to_pcd(rgb_image, depth_image, processed_mask, pose)
         # Downsample the point cloud and remove outliers
         processed_pcd = processed_pcd.voxel_down_sample(voxel_size=0.01)
         processed_pcd, _ = processed_pcd.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
 
-        return processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion
+        kernel = np.ones((5,5),np.uint8)
+        processed_ped_mask = cv2.erode(masks["peduncle_mask"], kernel, iterations = 2)
+        processed_ped_mask = processed_ped_mask.astype(bool).astype(np.uint8)
+        processed_ped_pcd = self.rgbd_to_pcd(rgb_image, depth_image, processed_ped_mask, pose)
 
-    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=1000):
+        return processed_pcd, fruit_pcd, processed_ped_pcd, initial_position, initial_quaternion
+
+    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=500):
         """
         Fits a superellipsoid to the partial point cloud using the coarse pose as initialization.
         Uses the Solina cost function for optimization.

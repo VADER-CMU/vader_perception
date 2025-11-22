@@ -195,7 +195,7 @@ class FruitDetectionNode:
                 results = self.Segmentation.infer(self.gripper_image, coarse_only=False, verbose=False)
 
                 for result in results:
-                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result, offset=np.array([0,0,0.02]))
+                    pose_dict = self.gripper_pose_estimator.pose_estimation(self.gripper_image, self.gripper_depth, result)
                     self.gripper_pose_dict_array.append(pose_dict)
                         
 
