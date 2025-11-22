@@ -78,7 +78,7 @@ class FruitDetectionNode:
         self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=10)
         self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=10)
 
-        self.camera_blocked_pub = rospy.Publisher('gripper_view_blocked', String, queue_size=10)
+        self.camera_blocked_pub = rospy.Publisher('gripper_view', String, queue_size=10)
 
         self.debug_fruit_center_pose_pub = rospy.Publisher("pepper_center", PoseArray, queue_size=10)
         self.debug_peduncle_center_pose_pub = rospy.Publisher("peduncle_center", PoseArray, queue_size=10)

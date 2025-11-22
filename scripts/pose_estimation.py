@@ -134,7 +134,7 @@ class PoseEstimation:
 
         if "peduncle_mask" in masks:
             
-            print("Peduncle detected")
+            # print("Peduncle detected")
             # Bad estimate of the center of the fruit
             refined_fruit_center = fruit_pcd.get_center() + offset
 
@@ -167,7 +167,7 @@ class PoseEstimation:
     
     def _verify_superellipsoid_center(self, initial_position, refined_position):
 
-        if np.linalg.norm(initial_position - refined_position) > 0.1:
+        if np.linalg.norm(initial_position - refined_position) > 0.05:
             print("Warning: Superellipsoid center deviated significantly from initial estimate.")
             return initial_position
 
