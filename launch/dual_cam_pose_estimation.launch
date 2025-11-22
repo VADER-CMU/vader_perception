@@ -34,12 +34,11 @@
   <arg name="pkg_path" value="$(find vader_perception)" />
   
   <!-- Then set the weights_path parameter with the resolved path -->
-  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/fruit_fvd.pt" />
-  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=111ae427vhfLbMKw2TUW5bHy6nxH3DF2E" />
+  <param name="fruit_weights_path" value="$(arg pkg_path)/weights/fruit_fvd.onnx" />
+  <param name="fruit_drive_url" value="https://drive.google.com/uc?id=1nc8P4PtmbLeK7Y1u9ZnUYydurS6sc8h_" />
+  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle_fvd.onnx" />
+  <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1X4v8yjkXdBZJRr59IWfZ6JKWETy3N5-f" />
 
-  <!-- fruit.pt https://drive.google.com/uc?id=1NxZJamK4m9ba1k67vGCFOqA-DMo1QIyR -->
-  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle.pt" />
-  <param name="peduncle_drive_url" value="1s2f56Wwm9Cy0P0Oj5mSOd_Re7h5PyQ_I" />
 
     <!-- Segmentation Confidence -->
   <param name="fruit_confidence" value="0.7" />
