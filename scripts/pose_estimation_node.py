@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import rospy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, PointCloud2
 from geometry_msgs.msg import PoseArray
 from vader_msgs.msg import PepperArray
 from std_msgs.msg import String
@@ -145,6 +145,10 @@ class FruitDetectionNode:
                 coarse_pepper_array_msg, fine_pepper_array_msg = pack_ordered_pepper_array_message(self.pose_dict_array, fine=True, frame_id=self.cam_frame_id)
                 self.coarse_pepper_array_pub.publish(coarse_pepper_array_msg)
                 self.fine_pepper_array_pub.publish(fine_pepper_array_msg)
+
+                # for pose_dict in self.pose_dict_array:
+                #     pepper_pcd_msg = pack_debug_pcd(pose_dict["fruit_pcd"], frame_id=self.cam_frame_id)
+                #     self.debug_fruit_pcd_pub.publish(pepper_pcd_msg)
 
 
                 self.pose_dict_array = []

@@ -141,7 +141,7 @@ class PoseEstimation:
             if superellipsoid_method:
                 processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion = \
                     self._preprocess_pcd_for_superellipsoid(rgb_image, depth_image, masks)
-                refined_fruit_center, _, _ = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
+                refined_fruit_center, _, _, fitted_pcd = self._refine_pose_superellipsoid(processed_pcd, refined_fruit_center, initial_quaternion)
                 refined_fruit_center = self._verify_superellipsoid_center(initial_position, refined_fruit_center)
 
                 if refined_fruit_center is None:
@@ -214,7 +214,7 @@ class PoseEstimation:
 
         return processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion
 
-    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=200):
+    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=1000):
         """
         Fits a superellipsoid to the partial point cloud using the coarse pose as initialization.
         Uses the Solina cost function for optimization.
@@ -315,7 +315,7 @@ class PoseEstimation:
         # superellipsoid_pcd = self.sample_superellipsoid_surface(parameters, num_samples=200)
 
 
-        return optimized_position, optimized_quaternion, parameters
+        return optimized_position, optimized_quaternion, parameters #, superellipsoid_pcd
 
     def _super_residuals(self, params, points_world, priors):
         """
