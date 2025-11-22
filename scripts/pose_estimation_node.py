@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from pose_estimation import PoseEstimation, SequentialSegmentation
-from msg_utils import wait_for_camera_info, pack_debug_pose_array_message, pack_pepper_array_message, pack_ordered_pepper_array_message
+from msg_utils import wait_for_camera_info, pack_debug_pose_array_message, pack_pepper_array_message, pack_ordered_pepper_array_message, pack_debug_pcd
 
 class FruitDetectionNode:
     def __init__(self):

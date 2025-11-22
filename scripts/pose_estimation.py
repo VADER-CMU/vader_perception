@@ -122,7 +122,7 @@ class PoseEstimation:
         pose = np.eye(4)
         fruit_pcd = self.rgbd_to_pcd(rgb_image, depth_image, masks["fruit_mask"], pose)
 
-        offset = [0, 0, -0.04]
+        offset = [0, 0, 0.02]
 
 
 
@@ -159,7 +159,8 @@ class PoseEstimation:
             result["peduncle_position"] = peduncle_center
             result["fruit_quaternion"] = quaternion
             result["peduncle_quaternion"] = quaternion
-            result["peduncle_pcd"] = peduncle_pcd
+            # result["peduncle_pcd"] = peduncle_pcd
+            # result["fruit_pcd"] = fitted_pcd if superellipsoid_method else fruit_pcd
 
 
         return result
@@ -210,7 +211,7 @@ class PoseEstimation:
 
         return processed_pcd, fruit_pcd, peduncle_pcd, initial_position, initial_quaternion
 
-    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=2000):
+    def _refine_pose_superellipsoid(self, processed_pcd, coarse_position, coarse_quaternion, max_iterations=200):
         """
         Fits a superellipsoid to the partial point cloud using the coarse pose as initialization.
         Uses the Solina cost function for optimization.
@@ -251,7 +252,7 @@ class PoseEstimation:
         priors = {
             'center': coarse_position,
             'rotation': r_obj,
-            'prior_center_weight': 0.1,
+            'prior_center_weight': 0.01,
             'prior_rotation_weight': 0.01,
             'prior_scaling_weight': 0.5
         }
@@ -266,8 +267,8 @@ class PoseEstimation:
             loss='linear', # Standard least squares
             max_nfev=max_iterations,
             verbose=0,
-            ftol=1e-16,
-            gtol=1e-16,
+            ftol=1e-15,
+            gtol=1e-15,
             xtol=1e-15
         )
 
@@ -301,6 +302,9 @@ class PoseEstimation:
             'cost': res.cost,
             'success': res.success
         }
+        
+        # Debug Visualization
+        # superellipsoid_pcd = self.sample_superellipsoid_surface(parameters, num_samples=200)
 
 
         return optimized_position, optimized_quaternion, parameters
@@ -382,6 +386,70 @@ class PoseEstimation:
         ])
         
         return residuals
+    
+    def _c_func(self, w, m):
+        """Signed cosine power function"""
+        return np.sign(np.cos(w)) * np.power(np.abs(np.cos(w)), m)
+    
+    
+    def _s_func(self, w, m):
+        """Signed sine power function"""
+        return np.sign(np.sin(w)) * np.power(np.abs(np.sin(w)), m)
+    
+    def sample_superellipsoid_surface(self, parameters, num_samples=1000):
+        """
+        Sample points on the superellipsoid surface for visualization.
+        
+        Args:
+            parameters (dict): Superellipsoid parameters
+            num_samples (int): Number of points to sample
+            
+        Returns:
+            open3d.geometry.PointCloud: Sampled surface points
+        """
+        a = parameters['a']
+        b = parameters['b']
+        c = parameters['c']
+        e1 = parameters['e1']
+        e2 = parameters['e2']
+        tx = parameters['tx']
+        ty = parameters['ty']
+        tz = parameters['tz']
+        roll = parameters['roll']
+        pitch = parameters['pitch']
+        yaw = parameters['yaw']
+        
+        # Sample using parametric definition
+        points = []
+        u_samples = np.linspace(-np.pi, np.pi, int(np.sqrt(num_samples)))
+        v_samples = np.linspace(-np.pi/2, np.pi/2, int(np.sqrt(num_samples)))
+        
+        r = 2.0 / e2
+        t = 2.0 / e1
+        
+        rotation_matrix = R.from_euler('xyz', [roll, pitch, yaw]).as_matrix()
+        
+        for u in u_samples:
+            for v in v_samples:
+                # Parametric equations with signed power function
+                x = a * self._c_func(v, 2.0/t) * self._c_func(u, 2.0/r)
+                y = b * self._c_func(v, 2.0/t) * self._s_func(u, 2.0/r)
+                z = c * self._s_func(v, 2.0/t)
+                
+                # Apply rotation and translation
+                point = np.array([x, y, z])
+                rotated_point = rotation_matrix @ point
+                transformed_point = rotated_point + np.array([tx, ty, tz])
+                
+                points.append(transformed_point)
+        
+        # Create point cloud
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(np.array(points))
+        
+        return pcd
+
+
 
 class Segmentation:
     def __init__(self, weights_path_url, device='cuda'):
