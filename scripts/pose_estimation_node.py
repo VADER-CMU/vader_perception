@@ -4,6 +4,7 @@ import rospy
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseArray
 from vader_msgs.msg import PepperArray
+from std_msgs.msg import String
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
@@ -58,6 +59,9 @@ class FruitDetectionNode:
         self.coarse_pepper_array_pub = rospy.Publisher('coarse_pepper_array', PepperArray, queue_size=10)
         self.fine_pepper_array_pub = rospy.Publisher('fine_pepper_array', PepperArray, queue_size=10)
 
+
+        self.camera_blocked_pub = rospy.Publisher('gripper_view_blocked', String, queue_size=10)
+
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
 
@@ -88,6 +92,25 @@ class FruitDetectionNode:
             rospy.logerr("CvBridge Error: {0}".format(e))
         
         self.latest_image = image_np
+
+    @staticmethod
+    def is_camera_blocked(frame, intensity_threshold=30, block_threshold=0.80):
+        """
+        Detects if the camera is blocked based on low light intensity.
+        """
+        if len(frame.shape) == 3:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = frame
+
+        dark_pixel_count = np.sum(gray < intensity_threshold)
+
+        total_pixels = gray.size
+
+        blocked_ratio = dark_pixel_count / total_pixels
+        is_blocked = blocked_ratio > block_threshold
+        
+        return is_blocked
        
     
     def process_data_and_publish(self):
@@ -125,6 +148,11 @@ class FruitDetectionNode:
 
 
                 self.pose_dict_array = []
+
+                if self.is_camera_blocked(self.latest_image, intensity_threshold=100, block_threshold=0.5):
+                    self.camera_blocked_pub.publish(String("blocked"))
+                else:
+                    self.camera_blocked_pub.publish(String("unblocked"))
 
             
             self.rate.sleep()

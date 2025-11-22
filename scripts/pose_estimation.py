@@ -109,7 +109,7 @@ class PoseEstimation:
         # print(quaternion)
         return position, quaternion, peduncle_center, fruit_pcd
 
-    def pose_estimation(self, rgb_image, depth_image, masks, superellipsoid_method=False):
+    def pose_estimation(self, rgb_image, depth_image, masks, superellipsoid_method=True, offset=[0,0,0.02]):
         """
         Fine fruit pose estimation gives the position and orientation of the fruit in the camera frame
         Args: rgb_image (np.ndarray): RGB image of size (640, 480, 3)
@@ -236,7 +236,12 @@ class PoseEstimation:
         
         # Pose: Use coarse position and convert quaternion to Rotation Vector for optimization (3 params vs 4)
         tx, ty, tz = coarse_position
-        r_obj = R.from_quat(coarse_quaternion)
+
+        try:
+            r_obj = R.from_quat(coarse_quaternion)
+        except ValueError:
+            print("Invalid quaternion provided for coarse orientation. Using default.")
+            r_obj = R.from_quat([0, 0, 0, 1])  # Default to no rotation if invalid quaternion
         rot_vec = r_obj.as_rotvec() # [rx, ry, rz]
         
         # x0 vector: [a, b, c, e1, e2, tx, ty, tz, rx, ry, rz]

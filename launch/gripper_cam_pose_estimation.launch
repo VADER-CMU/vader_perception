@@ -7,7 +7,7 @@
   <!-- Launch the RealSense camera -->
   <include file="$(find realsense2_camera)/launch/rs_camera.launch">
     <!-- RealSense camera configuration parameters -->
-    <arg name="serial_no" value="$(arg CUTTER_CAM_SERIAL)" />
+    <arg name="serial_no" value="$(arg GRIPPER_CAM_SERIAL)" />
     <arg name="enable_pointcloud" value="true" />
     <arg name="align_depth" value="true" />
     <arg name="color_width" value="848" />

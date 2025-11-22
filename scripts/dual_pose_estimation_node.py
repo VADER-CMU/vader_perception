@@ -7,6 +7,7 @@ from vader_msgs.msg import PepperArray
 import cv2
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
+from std_msgs.msg import String
 import sensor_msgs.point_cloud2 as pc2
 from pose_estimation import PoseEstimation, SequentialSegmentation
 from msg_utils import pack_pepper_message, pack_debug_fruit_message, pack_debug_pcd
@@ -77,12 +78,14 @@ class FruitDetectionNode:
         self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=10)
         self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=10)
 
+        self.camera_blocked_pub = rospy.Publisher('gripper_view_blocked', String, queue_size=10)
+
         self.debug_fruit_center_pose_pub = rospy.Publisher("pepper_center", PoseArray, queue_size=10)
         self.debug_peduncle_center_pose_pub = rospy.Publisher("peduncle_center", PoseArray, queue_size=10)
 
         # cutter publishers
         self.cutter_debug_coarse_pose_array_pub = rospy.Publisher('cutter_debug_coarse_pose_array', PoseArray, queue_size=10)
-        self.cutter_debug_fine_pose_array_pub = rospy.Publisher('cutter_debug_fine_pose_array', PoseArray, queue_size=10)
+        # self.cutter_debug_fine_pose_array_pub = rospy.Publisher('cutter_debug_fine_pose_array', PoseArray, queue_size=10)
         # No fine pose for cutter camera
 
         self.cutter_coarse_pepper_array_pub = rospy.Publisher('cutter_coarse_pepper_array', PepperArray, queue_size=10)
@@ -150,6 +153,25 @@ class FruitDetectionNode:
             self.gripper_image = image_np
         elif cam == "cutter":
             self.cutter_image = image_np
+
+    @staticmethod
+    def is_camera_blocked(frame, intensity_threshold=30, block_threshold=0.80):
+        """
+        Detects if the camera is blocked based on low light intensity.
+        """
+        if len(frame.shape) == 3:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = frame
+
+        dark_pixel_count = np.sum(gray < intensity_threshold)
+
+        total_pixels = gray.size
+
+        blocked_ratio = dark_pixel_count / total_pixels
+        is_blocked = blocked_ratio > block_threshold
+        
+        return is_blocked
        
     
     def process_data_and_publish(self):
@@ -192,6 +214,11 @@ class FruitDetectionNode:
 
 
                 self.gripper_pose_dict_array = []
+
+                if self.is_camera_blocked(self.gripper_image, intensity_threshold=100, block_threshold=0.5):
+                    self.camera_blocked_pub.publish(String("blocked"))
+                else:
+                    self.camera_blocked_pub.publish(String("unblocked"))
             
             if self.cutter_depth is not None and self.cutter_image is not None:
 
@@ -206,8 +233,8 @@ class FruitDetectionNode:
                 debug_coarse_pose_array_msg = pack_debug_pose_array_message(self.cutter_pose_dict_array, fine=False, frame_id=self.cutter_cam_frame_id)
                 self.cutter_debug_coarse_pose_array_pub.publish(debug_coarse_pose_array_msg)
 
-                debug_fine_pose_array_msg = pack_debug_pose_array_message(self.cutter_pose_dict_array, fine=True, frame_id=self.cutter_cam_frame_id)
-                self.cutter_debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
+                # debug_fine_pose_array_msg = pack_debug_pose_array_message(self.cutter_pose_dict_array, fine=True, frame_id=self.cutter_cam_frame_id)
+                # self.cutter_debug_fine_pose_array_pub.publish(debug_fine_pose_array_msg)
 
                 coarse_pepper_array_msg = pack_pepper_array_message(self.cutter_pose_dict_array, fine=False, frame_id=self.cutter_cam_frame_id)
 
