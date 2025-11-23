@@ -53,19 +53,19 @@ class FruitDetectionNode:
         # self.debug_fruit_pcd_pub = rospy.Publisher('debug_fruit_pcd', PointCloud2, queue_size=10)
         # self.debug_peduncle_pcd_pub = rospy.Publisher('debug_peduncle_pcd', PointCloud2, queue_size=10)
 
-        self.debug_coarse_pose_array_pub = rospy.Publisher('debug_coarse_pose_array', PoseArray, queue_size=10)
-        self.debug_fine_pose_array_pub = rospy.Publisher('debug_fine_pose_array', PoseArray, queue_size=10)
+        self.debug_coarse_pose_array_pub = rospy.Publisher('debug_coarse_pose_array', PoseArray, queue_size=5)
+        self.debug_fine_pose_array_pub = rospy.Publisher('debug_fine_pose_array', PoseArray, queue_size=5)
 
-        self.coarse_pepper_array_pub = rospy.Publisher('coarse_pepper_array', PepperArray, queue_size=10)
-        self.fine_pepper_array_pub = rospy.Publisher('fine_pepper_array', PepperArray, queue_size=10)
+        self.coarse_pepper_array_pub = rospy.Publisher('coarse_pepper_array', PepperArray, queue_size=5)
+        self.fine_pepper_array_pub = rospy.Publisher('fine_pepper_array', PepperArray, queue_size=5)
 
 
-        self.camera_blocked_pub = rospy.Publisher('gripper_view_blocked', String, queue_size=10)
+        self.camera_blocked_pub = rospy.Publisher('gripper_view_blocked', String, queue_size=5)
 
         rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_callback)
         rospy.Subscriber('/camera/color/image_raw', Image, self.image_callback)
 
-        self.rate = rospy.Rate(10)
+        self.rate = rospy.Rate(6)
 
         self.camera_info_topic = '/camera/depth/camera_info'
         self.cam_frame_id = "camera_depth_optical_frame"

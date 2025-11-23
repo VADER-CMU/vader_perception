@@ -72,23 +72,23 @@ class FruitDetectionNode:
 
 
         # gripper publishers
-        self.gripper_debug_coarse_pose_array_pub = rospy.Publisher('gripper_debug_coarse_pose_array', PoseArray, queue_size=10)
-        self.gripper_debug_fine_pose_array_pub = rospy.Publisher('gripper_debug_fine_pose_array', PoseArray, queue_size=10)
+        self.gripper_debug_coarse_pose_array_pub = rospy.Publisher('gripper_debug_coarse_pose_array', PoseArray, queue_size=5)
+        self.gripper_debug_fine_pose_array_pub = rospy.Publisher('gripper_debug_fine_pose_array', PoseArray, queue_size=5)
 
-        self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=10)
-        self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=10)
+        self.gripper_coarse_pepper_array_pub = rospy.Publisher('gripper_coarse_pepper_array', PepperArray, queue_size=5)
+        self.gripper_fine_pepper_array_pub = rospy.Publisher('gripper_fine_pepper_array', PepperArray, queue_size=5)
 
-        self.camera_blocked_pub = rospy.Publisher('gripper_view', String, queue_size=10)
+        self.camera_blocked_pub = rospy.Publisher('gripper_view', String, queue_size=5)
 
-        self.debug_fruit_center_pose_pub = rospy.Publisher("pepper_center", PoseArray, queue_size=10)
-        self.debug_peduncle_center_pose_pub = rospy.Publisher("peduncle_center", PoseArray, queue_size=10)
+        # self.debug_fruit_center_pose_pub = rospy.Publisher("pepper_center", PoseArray, queue_size=5)
+        # self.debug_peduncle_center_pose_pub = rospy.Publisher("peduncle_center", PoseArray, queue_size=5)
 
         # cutter publishers
-        self.cutter_debug_coarse_pose_array_pub = rospy.Publisher('cutter_debug_coarse_pose_array', PoseArray, queue_size=10)
-        # self.cutter_debug_fine_pose_array_pub = rospy.Publisher('cutter_debug_fine_pose_array', PoseArray, queue_size=10)
+        self.cutter_debug_coarse_pose_array_pub = rospy.Publisher('cutter_debug_coarse_pose_array', PoseArray, queue_size=5)
+        # self.cutter_debug_fine_pose_array_pub = rospy.Publisher('cutter_debug_fine_pose_array', PoseArray, queue_size=5)
         # No fine pose for cutter camera
 
-        self.cutter_coarse_pepper_array_pub = rospy.Publisher('cutter_coarse_pepper_array', PepperArray, queue_size=10)
+        self.cutter_coarse_pepper_array_pub = rospy.Publisher('cutter_coarse_pepper_array', PepperArray, queue_size=5)
         # No fine pose for cutter camera
 
 
@@ -121,7 +121,7 @@ class FruitDetectionNode:
         self.cutter_camera_info_topic = '/cutter_cam/depth/camera_info'
         self.cutter_cam_frame_id = "cutter_cam_depth_optical_frame"
 
-        self.rate = rospy.Rate(10)
+        self.rate = rospy.Rate(6)
         
         rospy.loginfo("Fruit detection node initialized")
     
