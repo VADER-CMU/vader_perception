@@ -36,13 +36,12 @@
   <!-- Then set the weights_path parameter with the resolved path -->
   <param name="fruit_weights_path" value="$(arg pkg_path)/weights/fruit_fvd.pt" />
   <param name="fruit_drive_url" value="https://drive.google.com/uc?id=111ae427vhfLbMKw2TUW5bHy6nxH3DF2E" />
-  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle.pt" />
-  <param name="peduncle_drive_url" value="1s2f56Wwm9Cy0P0Oj5mSOd_Re7h5PyQ_I" />
-
+  <param name="peduncle_weights_path" value="$(arg pkg_path)/weights/peduncle_encore.pt" />
+  <param name="peduncle_drive_url" value="https://drive.google.com/uc?id=1wTbXvUIs7j3QT2OMGud71nuZ1qyCcbM2" />
 
     <!-- Segmentation Confidence -->
-  <param name="fruit_confidence" value="0.7" />
-  <param name="peduncle_confidence" value="0.2" />                                                                                                                                                                                                                                                                                      
+  <param name="fruit_confidence" value="0.8" />
+  <param name="peduncle_confidence" value="0.4" />                                                                                                                                                                                                                                                                                      
   
   
   <!-- Start the fruit detection node -->
